@@ -18,22 +18,22 @@ main :: IO ()
 main = defaultMain
   [
     -- linear tests
-    testProperty "linear-basic   " basicLinearProp,
-    testProperty "linear-decons  " deconstructionLinearProp,
-    testProperty "linear-cons    " constructionLinearProp,
-    testProperty "linear-reverse " reverseProp,
-    testProperty "linear-concat  " concatProp,
+    testProperty "bytestring-linear-basic   " basicLinearProp,
+    testProperty "bytestring-linear-decons  " deconstructionLinearProp,
+    testProperty "bytestring-linear-cons    " constructionLinearProp,
+    testProperty "bytestring-linear-reverse " reverseProp,
+    testProperty "bytestring-linear-concat  " concatProp,
     
     -- split test
-    testProperty "split          " splitProp,
+    testProperty "bytestring-split          " splitProp,
     
     -- indexed tests
-    testProperty "indexed-basic  " basicIndexedProp,
-    testProperty "indexed-assoc  " assocIndexedProp,
-    testProperty "indexed-read   " readIndexedProp,
+    testProperty "bytestring-indexed-basic  " basicIndexedProp,
+    testProperty "bytestring-indexed-assoc  " assocIndexedProp,
+    testProperty "bytestring-indexed-read   " readIndexedProp,
     
     -- sort test
-    testProperty "sort           " sortProp
+    testProperty "bytestring-sort           " sortProp
     
     -- set test (planned)
   ]
