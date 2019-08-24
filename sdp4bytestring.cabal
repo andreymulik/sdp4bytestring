@@ -1,0 +1,42 @@
+name:          sdp4bytestring
+version:       0.0.1.0
+category:      Data Structures
+
+synopsis:      SDP wrapper for ByteString.
+description:   This package provides implementations of SDP shared interface for
+               simplest data operations with ByteStrings.
+
+author:        Andrey Mulik
+maintainer:    work.a.mulik@gmail.com
+bug-reports:   https://github.com/andreymulik/sdp4bytestring/issues
+
+copyright:     2019 Andrey Mulik
+license-file:  LICENSE
+license:       BSD3
+
+build-type:    Simple
+cabal-version: >=1.10
+
+source-repository head
+  type: git
+  location: https://github.com/andreymulik/sdp4bytestring
+
+Library
+  hs-source-dirs:   src
+  
+  default-language: Haskell2010
+  
+  build-depends:
+    base         >= 4.12  && < 5,
+    bytestring   >= 0.10  && < 0.11,
+    sdp          >= 0.0.2.0 && < 0.1,
+    
+    QuickCheck   >= 2.12  && < 3,
+    data-default >= 0.7   && < 0.8
+  
+  ghc-options: -O2 -Wall -Wno-orphans
+  
+  exposed-modules:
+    SDP.ByteString
+    SDP.ByteString.Related
+
