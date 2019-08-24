@@ -27,16 +27,39 @@ Library
   default-language: Haskell2010
   
   build-depends:
-    base         >= 4.12  && < 5,
-    bytestring   >= 0.10  && < 0.11,
+    base         >= 4.12    && < 5,
+    bytestring   >= 0.10    && < 0.11,
     sdp          >= 0.0.2.0 && < 0.1,
-    
-    QuickCheck   >= 2.12  && < 3,
-    data-default >= 0.7   && < 0.8
+    QuickCheck   >= 2.12    && < 3,
+    data-default >= 0.7     && < 0.8
   
   ghc-options: -O2 -Wall -Wno-orphans
   
   exposed-modules:
     SDP.ByteString
     SDP.ByteString.Related
+
+test-suite test-sdp4bytestring
+  default-language: Haskell2010
+  hs-source-dirs:   test, src
+  
+  type:             exitcode-stdio-1.0
+  main-is:          test-bytestring.hs
+  
+  other-modules:
+    SDP.ByteString
+    SDP.ByteString.Related
+
+  build-depends:
+    base                       >= 4.12    && < 5,
+    sdp                        >= 0.0.2.0 && < 0.1,
+    bytestring                 >= 0.10    && < 0.11,
+    data-default               >= 0.7     && < 0.8,
+    QuickCheck                 >= 2.12    && < 3,
+    test-framework             >= 0.8     && < 0.9,
+    test-framework-quickcheck2 >= 0.3     && < 0.4
+
+  ghc-options: -Wall -O2 -Wno-orphans
+  include-dirs: include
+
 
