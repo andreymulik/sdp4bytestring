@@ -2,3 +2,6 @@ version 0.0.1.0:
   Added Bordered, Linear and Indexed instances.
   Added test suite.
 
+version 0.1:
+  Stable release.
+

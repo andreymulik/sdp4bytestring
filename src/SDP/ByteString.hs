@@ -187,9 +187,6 @@ instance Freeze (ST s) (STBytes s Int Word8) ByteString where freeze = freeze'
 
 --------------------------------------------------------------------------------
 
-cmpfst :: (Ord a) => (a, b) -> (a, b) -> Ordering
-cmpfst (x, _) (y, _) = x <=> y
-
 {-
   nubBy_ has complexity O(n ^ 2). However, when using it in nubBy n <= 256,
   and therefore the complexity of this step is O(1).
@@ -210,6 +207,4 @@ freeze' es = fromList <$> getLeft es
 
 unreachEx :: String -> a
 unreachEx msg = throw . UnreachableException $ "in Data.ByteString.SDP." ++ msg
-
-
 
