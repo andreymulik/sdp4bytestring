@@ -6,9 +6,7 @@ import Test.Framework.Providers.QuickCheck2
 import SDP.ByteString
 import SDP.ByteString.Related ()
 
-import Test.SDP.Indexed
-import Test.SDP.Linear
-import Test.SDP.Sort
+import Test.SDP
 
 default ()
 
@@ -17,26 +15,51 @@ default ()
 main :: IO ()
 main = defaultMain
   [
+    -- common tests
+    testProperty "strict-bytestring-eq             " eqProp,
+    testProperty "strict-bytestring-ord            " ordProp,
+    testProperty "strict-bytestring-lexicographic  " lgoProp,
+    
     -- linear tests
-    testProperty "bytestring-linear-basic   " basicLinearProp,
-    testProperty "bytestring-linear-decons  " deconstructionLinearProp,
-    testProperty "bytestring-linear-cons    " constructionLinearProp,
-    testProperty "bytestring-linear-reverse " reverseProp,
-    testProperty "bytestring-linear-concat  " concatProp,
+    testProperty "strict-bytestring-linear-basic   " basicLinearProp,
+    testProperty "strict-bytestring-linear-decons  " deconstructionLinearProp,
+    testProperty "strict-bytestring-linear-cons    " constructionLinearProp,
+    testProperty "strict-bytestring-linear-reverse " reverseProp,
+    testProperty "strict-bytestring-linear-concat  " concatProp,
     
     -- split test
-    testProperty "bytestring-split          " splitProp,
+    testProperty "strict-bytestring-split          " splitProp,
     
     -- indexed tests
-    testProperty "bytestring-indexed-basic  " basicIndexedProp,
-    testProperty "bytestring-indexed-assoc  " assocIndexedProp,
-    testProperty "bytestring-indexed-read   " readIndexedProp,
+    testProperty "strict-bytestring-indexed-basic  " basicIndexedProp,
+    testProperty "strict-bytestring-indexed-assoc  " assocIndexedProp,
+    testProperty "strict-bytestring-indexed-read   " readIndexedProp,
     
     -- sort test
-    testProperty "bytestring-sort           " sortProp
+    testProperty "strict-bytestring-sort           " sortProp,
     
     -- set test (planned)
+    
+    -- estimate test
+    testProperty "strict-bytestring-estimate       " estimateProp
   ]
+
+--------------------------------------------------------------------------------
+
+{- Eq property. -}
+
+eqProp :: TestEq ByteString
+eqProp =  eqTest
+
+--------------------------------------------------------------------------------
+
+{- Ord property. -}
+
+ordProp :: TestOrd ByteString
+ordProp =  ordTest
+
+lgoProp :: Long ByteString -> Long ByteString -> Bool
+lgoProp (Long xs) (Long ys) = lexicographicOrdTest xs ys
 
 --------------------------------------------------------------------------------
 
@@ -84,7 +107,14 @@ readIndexedProp  =  readIndexedTest
 
 {- Sort property. -}
 
-sortProp :: ByteString -> Bool
+sortProp :: Medium ByteString -> Bool
 sortProp =  sortTest
+
+--------------------------------------------------------------------------------
+
+{- Estimate property. -}
+
+estimateProp :: TestEstimate ByteString
+estimateProp =  estimateTest
 
 

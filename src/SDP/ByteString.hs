@@ -8,21 +8,21 @@
     Maintainer  :  work.a.mulik@gmail.com
     Portability :  non-portable (GHC Extensions)
     
-    sdp4bytestring is SDP wrapper for ByteString.
-    
     SDP.ByteString provides 'Bordered', 'Linear', 'Split', Indexed', 'Sort',
-    'Thaw' and 'Freeze' instances for 'ByteString'.
+    'Estimate', 'Thaw' and 'Freeze' instances for 'ByteString'.
     
     This wrapper is made for the convenience of using ByteString with other data
     structures - all the original functionality is available, some missing
     generalized functions have also been written.
     
-    Unfortunately, Functor and Foldable for ByteString cannot be implemented,
-    but I'm working on it.
+    Unfortunately, some functions from ByteString cannot be generalized
+    (Functor, for example). This wrapper simplifies the work with the library,
+    but some things are simply impossible to do.
 -}
 module SDP.ByteString
 (
   module SDP.IndexedM,
+  module SDP.Sort,
   
   ByteString
 )
@@ -31,32 +31,21 @@ where
 import Prelude ()
 import SDP.SafePrelude
 
--- SDP definitions
-
 import SDP.IndexedM
-import SDP.Unboxed
 import SDP.Sort
 
--- ByteString definitions
-
-import Data.ByteString          (  ByteString  )
-import Data.ByteString.Internal ( unsafeCreate )
+import Data.ByteString                (  ByteString  )
+import Data.ByteString.Internal       ( unsafeCreate )
 import qualified Data.ByteString as B
 
--- low-level definitions
-
 import Foreign.Storable ( Storable ( poke ) )
-import Foreign.Ptr      ( plusPtr )
+import Foreign.Ptr      (      plusPtr      )
 
-import GHC.Base ( MutableByteArray#, Int (..), isTrue#, (==#), (+#), (-#) )
-import GHC.ST   ( runST, ST (..), STRep )
-
--- common stuff
-
-import Control.Exception.SDP
+import GHC.Base (    Int (..)    )
+import GHC.ST   ( runST, ST (..) )
 
 import SDP.Bytes.ST
-import SDP.SortM.Stuff
+import SDP.SortM.Tim
 
 default ()
 
@@ -66,9 +55,12 @@ default ()
 
 instance Bordered ByteString Int Word8
   where
-    lower _  = 0
-    upper bs = B.length bs - 1
-    sizeOf   = B.length
+    lower      = const 0
+    sizeOf     = B.length
+    upper   bs = sizeOf bs - 1
+    bounds  bs = (0, sizeOf bs - 1)
+    indices bs = [0 .. sizeOf bs - 1]
+    indexIn bs = \ i -> i >= 0 && i < sizeOf bs
 
 instance Linear ByteString Word8
   where
@@ -87,27 +79,30 @@ instance Linear ByteString Word8
         fromFoldable' ptr = void $ foldr pokeNext (return ptr) es
         pokeNext  e   mp  = do p <- mp; poke p e; return $ p `plusPtr` 1
     
-    fromList = B.pack
-    listL    = B.unpack
-    (++)     = B.append
+    listR = \ bs -> let n = sizeOf bs in [ bs .! i | i <- [n - 1, n - 2 .. 0] ]
+    listL = B.unpack
+    (++)  = B.append
     
-    listR   bs  = (bs .!) <$> [n - 1, n - 2 .. 0] where n = sizeOf bs
-    concat  bss = B.concat $ toList bss
+    concat      = B.concat . toList
     intersperse = B.intersperse
     replicate   = B.replicate
     filter      = B.filter
+    fromList    = B.pack
     
     partitions is bs = map fromList . partitions is $ listL bs
     isSubseqOf xs ys = B.all (`B.elem` ys) xs
     
     -- | O(n) nub, requires O(1) memory.
     nub bs = runST $ do
-      hs <- filled 256 False
-      B.foldr (\ b io -> writeM hs (fromEnum b) True >> io) (return ()) bs
-      toList' hs
+        hs <- filled 256 False
+        i_foldr (\ b io -> writeM hs b True >> io) (return ()) bs
+        done' hs
+      where
+        done' :: STBytes s Word8 Bool -> ST s ByteString
+        done' =  fmap fromList . ifoldrM (\ i b is -> pure $ b ? (i : is) $ is) []
     
     -- O(n) nubBy, requires O(1) additional memory.
-    nubBy f bs = nubBy_ f (nub bs)
+    nubBy f = fromList . i_foldr (\ b es -> any (f b) es ? es $ (b : es)) [] . nub
 
 instance Split ByteString Word8
   where
@@ -166,45 +161,55 @@ instance Indexed ByteString Int Word8
 
 instance Sort ByteString Word8
   where
-    sortBy f bs = runST $ do es <- thaw bs; timSortBy f es; freeze' es
+    sortBy f bs = runST $ do es' <- thaw bs; timSortBy f es'; done es'
+
+--------------------------------------------------------------------------------
+
+{- IFold and Estimate instances. -}
+
+instance IFold ByteString Int Word8
+  where
+    {-# INLINE ifoldr #-}
+    ifoldr f = \ base bs ->
+      let go i = sizeOf bs == i ? base $ f i (bs !^ i) (go $ i + 1)
+      in  go 0
+    
+    {-# INLINE ifoldl #-}
+    ifoldl f = \ base bs ->
+      let go i = -1 == i ? base $ f i (go $ i + 1) (bs !^ i)
+      in  go (upper bs)
+    
+    i_foldr = B.foldr
+    i_foldl = B.foldl
+
+instance Estimate ByteString
+  where
+    xs <==> ys = sizeOf xs <=> sizeOf ys
+    xs .>.  ys = sizeOf xs  >  sizeOf ys
+    xs .<.  ys = sizeOf xs  <  sizeOf ys
+    xs .<=. ys = sizeOf xs <=  sizeOf ys
+    xs .>=. ys = sizeOf xs >=  sizeOf ys
+    xs <.=> c2 = sizeOf xs <=> c2
+    xs  .>  c2 = sizeOf xs  >  c2
+    xs  .<  c2 = sizeOf xs  <  c2
+    xs .>=  c2 = sizeOf xs >=  c2
+    xs .<=  c2 = sizeOf xs <=  c2
 
 --------------------------------------------------------------------------------
 
 {- Thaw and Freeze instances. -}
 
-instance Thaw (ST s) ByteString (STBytes s Int Word8)
-  where
-    thaw bs = ST $ \ s1# -> case newUnboxed e n# s1# of
-      (# s2#, marr# #) ->
-        let go y r = \ i# s3# -> case writeByteArray# marr# i# y s3# of
-              s4# -> if isTrue# (i# ==# n# -# 1#) then s4# else r (i# +# 1#) s4#
-        in done n marr# ( if n == 0 then s2# else B.foldr go (\ _ s# -> s#) bs 0# s2# )
-      where
-        e = unreachEx "thaw" :: Word8
-        !n@(I# n#) = sizeOf bs
+instance Thaw (ST s) ByteString (STBytes# s Word8)    where thaw = fromIndexed'
+instance Thaw (ST s) ByteString (STBytes s Int Word8) where thaw = fromIndexed'
 
-instance Freeze (ST s) (STBytes s Int Word8) ByteString where freeze = freeze'
+instance Freeze (ST s) (STBytes# s Word8) ByteString
+  where
+    freeze = fmap fromList . getLeft
+
+instance Freeze (ST s) (STBytes s Int Word8) ByteString where freeze = done
 
 --------------------------------------------------------------------------------
 
-{-
-  nubBy_ has complexity O(n ^ 2). However, when using it in nubBy n <= 256,
-  and therefore the complexity of this step is O(1).
--}
-nubBy_ :: (Word8 -> Word8 -> Bool) -> ByteString -> ByteString
-nubBy_ f bs = fromList $ B.foldr (\ b es -> any (f b) es ? es $ (b : es)) [] bs
-
-toList' :: STBytes s Int Bool -> ST s ByteString
-toList' bytes = fromList <$> foldr go (return []) [0 .. 255]
-  where
-    go i = liftA2 (\ b is -> b ? (toEnum i : is) $ is) (bytes !> i)
-
-done :: Int -> MutableByteArray# s -> STRep s (STBytes s Int Word8)
-done n mbytes# = \ s1# -> (# s1#, STBytes 0 (n - 1) n mbytes# #)
-
-freeze' :: STBytes s Int Word8 -> ST s ByteString
-freeze' es = fromList <$> getLeft es
-
-unreachEx :: String -> a
-unreachEx msg = throw . UnreachableException $ "in Data.ByteString.SDP." ++ msg
+done :: STBytes s Int Word8 -> ST s ByteString
+done =  fmap fromList . getLeft
 
