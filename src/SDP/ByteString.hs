@@ -8,7 +8,7 @@
     Maintainer  :  work.a.mulik@gmail.com
     Portability :  non-portable (GHC Extensions)
     
-    SDP.ByteString provides 'Bordered', 'Linear', 'Split', Indexed', 'Sort',
+    SDP.ByteString provides 'Bordered', 'Linear', 'Split', 'Indexed', 'Sort',
     'Estimate', 'Thaw' and 'Freeze' instances for 'ByteString'.
     
     This wrapper is made for the convenience of using ByteString with other data
