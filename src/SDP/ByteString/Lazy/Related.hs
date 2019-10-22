@@ -13,7 +13,7 @@
     If you use bytestrings with other structures, use quickcheck-instances and
     data-default-instances-bytestring.
 -}
-module SDP.ByteString.Lazy.Related where
+module SDP.ByteString.Lazy.Related ( module SDP.ByteString.Lazy ) where
 
 import Prelude ()
 import SDP.SafePrelude

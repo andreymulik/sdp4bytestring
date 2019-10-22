@@ -22,6 +22,7 @@
 module SDP.ByteString.Lazy
 (
   module SDP.IndexedM,
+  module SDP.Sort,
   
   ByteString
 )
@@ -54,6 +55,7 @@ instance Bordered ByteString Int Word8
   where
     lower      = const 0
     sizeOf     = fromEnum . B.length
+    
     upper   bs = sizeOf bs - 1
     bounds  bs = (0, sizeOf bs - 1)
     indices bs = [0 .. sizeOf bs - 1]
@@ -63,9 +65,10 @@ instance Linear ByteString Word8
   where
     replicate   = B.replicate . toEnum
     concat      = B.concat . toList
+    fromList    = B.pack
+    
     intersperse = B.intersperse
     filter      = B.filter
-    fromList    = B.pack
     
     listR  = \ bs -> let n = sizeOf bs in [ bs .! i | i <- [n - 1, n - 2 .. 0] ]
     single = B.singleton
@@ -197,4 +200,6 @@ done = freeze
 
 lim :: Int
 lim =  1024
+
+
 
