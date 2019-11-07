@@ -1,4 +1,4 @@
-# sdp4bytestring
+# SDP for ByteString
 
 SDP to ByteString is an implementation of the core SDP classes for ByteString.
 
