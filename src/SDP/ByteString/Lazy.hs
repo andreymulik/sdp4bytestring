@@ -21,10 +21,12 @@
 -}
 module SDP.ByteString.Lazy
 (
+  -- * Exports
   module SDP.IndexedM,
   module SDP.Sort,
   
-  ByteString
+  -- * ByteString
+  ByteString, LByteString
 )
 where
 
@@ -46,6 +48,11 @@ import qualified SDP.ByteString as S
 import GHC.ST ( runST, ST )
 
 default ()
+
+--------------------------------------------------------------------------------
+
+-- | Type synonym to avoid ambiguity.
+type LByteString = ByteString
 
 --------------------------------------------------------------------------------
 
@@ -150,8 +157,8 @@ instance Indexed ByteString Int Word8
         bnds' = defaultBounds (sizeOf es)
         bnds  = bounds es
     
-    p .$ es = fromEnum <$> B.findIndex   p es
-    p *$ es = fromEnum <$> B.findIndices p es
+    (.$) p = fmap fromEnum . B.findIndex   p
+    (*$) p = fmap fromEnum . B.findIndices p
 
 instance Sort ByteString Word8
   where
@@ -200,6 +207,4 @@ done = freeze
 
 lim :: Int
 lim =  1024
-
-
 

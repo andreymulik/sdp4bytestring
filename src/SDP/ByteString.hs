@@ -8,8 +8,7 @@
     Maintainer  :  work.a.mulik@gmail.com
     Portability :  non-portable (GHC Extensions)
     
-    SDP.ByteString provides 'Bordered', 'Linear', 'Split', 'Indexed', 'Sort',
-    'Estimate', 'Thaw' and 'Freeze' instances for 'ByteString'.
+    SDP.ByteString provides SDP instances for strict 'ByteString'.
     
     This wrapper is made for the convenience of using ByteString with other data
     structures - all the original functionality is available, some missing
@@ -21,10 +20,13 @@
 -}
 module SDP.ByteString
 (
+  -- * Exports
   module SDP.IndexedM,
   module SDP.Sort,
+  module SDP.Scan,
   
-  ByteString
+  -- * ByteString
+  ByteString, SByteString
 )
 where
 
@@ -33,21 +35,30 @@ import SDP.SafePrelude
 
 import SDP.IndexedM
 import SDP.Sort
+import SDP.Scan
 
-import Data.ByteString                (  ByteString  )
-import Data.ByteString.Internal       ( unsafeCreate )
+import Data.ByteString          (  ByteString  )
+import Data.ByteString.Internal ( unsafeCreate )
+
 import qualified Data.ByteString as B
 
 import Foreign.Storable ( Storable ( poke ) )
-import Foreign.Ptr      (      plusPtr      )
+import Foreign.Ptr      ( plusPtr )
 
-import GHC.Base (    Int (..)    )
-import GHC.ST   ( runST, ST (..) )
+import GHC.Base ( Int (..) )
+import GHC.ST   ( ST  (..), runST )
 
 import SDP.Bytes.ST
 import SDP.SortM.Tim
 
+import SDP.Internal.SBytes
+
 default ()
+
+--------------------------------------------------------------------------------
+
+-- | Type synomym to avoid ambiguity.
+type SByteString = ByteString
 
 --------------------------------------------------------------------------------
 
@@ -92,7 +103,7 @@ instance Linear ByteString Word8
     partitions is bs = map fromList . partitions is $ listL bs
     isSubseqOf xs ys = B.all (`B.elem` ys) xs
     
-    -- | O(n) nub, requires O(1) memory.
+    -- | O(n) nub, O(1) memory.
     nub bs = runST $ do
         hs <- filled 256 False
         i_foldr (\ b io -> writeM hs b True >> io) (return ()) bs
@@ -101,7 +112,7 @@ instance Linear ByteString Word8
         done' :: STBytes s Word8 Bool -> ST s ByteString
         done' =  fmap fromList . ifoldrM (\ i b is -> pure $ b ? (i : is) $ is) []
     
-    -- O(n) nubBy, requires O(1) additional memory.
+    -- O(n) nubBy, O(1) memory.
     nubBy f = fromList . i_foldr (\ b es -> any (f b) es ? es $ (b : es)) [] . nub
 
 instance Split ByteString Word8
@@ -165,7 +176,7 @@ instance Sort ByteString Word8
 
 --------------------------------------------------------------------------------
 
-{- IFold and Estimate instances. -}
+{- IFold, Scan and Estimate instances. -}
 
 instance IFold ByteString Int Word8
   where
@@ -181,6 +192,8 @@ instance IFold ByteString Int Word8
     
     i_foldr = B.foldr
     i_foldl = B.foldl
+
+instance Scan ByteString Word8
 
 instance Estimate ByteString
   where
@@ -212,4 +225,6 @@ instance Freeze (ST s) (STBytes s Int Word8) ByteString where freeze = done
 
 done :: STBytes s Int Word8 -> ST s ByteString
 done =  fmap fromList . getLeft
+
+
 
