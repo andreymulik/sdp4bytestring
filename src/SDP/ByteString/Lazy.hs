@@ -34,18 +34,19 @@ import Prelude ()
 import SDP.SafePrelude
 
 import SDP.IndexedM
-import SDP.Sort
-
-import SDP.SortM.Tim
-
-import SDP.ByteList.ST
-import SDP.ByteList.STUblist
 
 import Data.ByteString.Lazy.Internal ( ByteString (..) )
 import qualified Data.ByteString.Lazy as B
 import qualified SDP.ByteString as S
 
-import GHC.ST ( runST, ST )
+import Control.Monad.ST
+
+import SDP.ByteList.STUblist
+import SDP.ByteList.ST
+
+import SDP.Internal.SBytes
+import SDP.SortM.Tim
+import SDP.Sort
 
 default ()
 
@@ -168,17 +169,18 @@ instance Sort ByteString Word8
 
 instance Thaw (ST s) ByteString (STUblist s Word8)
   where
-    thaw Empty = return STUBEmpty
-    thaw (Chunk str lazy) = liftA2 STUblist (S.thaw str) (thaw lazy)
+    thaw = fmap STUblist . go
+      where
+        go :: ByteString -> ST s [STBytes# s Word8]
+        go es = case es of {Chunk bs bss -> liftA2 (:) (thaw bs) (go bss); _ -> return [] }
 
 instance Thaw (ST s) ByteString (STByteList s Int Word8)
   where
-    thaw bs = STByteList 0 (-1) <$> thaw bs
+    thaw bs = STByteList 0 (sizeOf bs - 1) <$> thaw bs
 
 instance Freeze (ST s) (STUblist s Word8) ByteString
   where
-    freeze STUBEmpty = return Empty
-    freeze (STUblist arr# ubl) = liftA2 Chunk (S.freeze arr#) (freeze ubl)
+    freeze (STUblist es) = foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty es
 
 instance Freeze (ST s) (STByteList s Int Word8) ByteString
   where
@@ -193,12 +195,11 @@ instance Estimate ByteString
         go o Empty Empty = o <=> 0
         go o xs    Empty = xs <.=> (-o)
         go o Empty    ys = o <=.> ys
-        go o (Chunk str1 lazy1) (Chunk str2 lazy2) =
-          let n1 = sizeOf str1; n2 = sizeOf str2
-          in  go (o + n1 - n2) lazy1 lazy2
+        go o (Chunk ch1 chs1) (Chunk ch2 chs2) =
+          go (o + sizeOf ch1 - sizeOf ch2) chs1 chs2
     
     Empty <.=> n = 0 <=> n
-    (Chunk str lazy) <.=> m = str .> m ? GT $ lazy <.=> (m - sizeOf str)
+    (Chunk ch chs) <.=> n = ch .> n ? GT $ chs <.=> (n - sizeOf ch)
 
 --------------------------------------------------------------------------------
 
@@ -207,4 +208,8 @@ done = freeze
 
 lim :: Int
 lim =  1024
+
+
+
+
 
