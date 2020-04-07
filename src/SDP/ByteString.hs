@@ -32,10 +32,13 @@ where
 
 import Prelude ()
 import SDP.SafePrelude
+import SDP.Bytes.ST
 
 import SDP.IndexedM
 import SDP.Sort
 import SDP.Scan
+
+import SDP.SortM.Tim
 
 import Data.ByteString          (  ByteString  )
 import Data.ByteString.Internal ( unsafeCreate )
@@ -45,13 +48,9 @@ import qualified Data.ByteString as B
 import Foreign.Storable ( Storable ( poke ) )
 import Foreign.Ptr      ( plusPtr )
 
-import GHC.Base ( Int (..) )
-import GHC.ST   ( ST  (..), runST )
-
-import SDP.Bytes.ST
-import SDP.SortM.Tim
-
 import SDP.Internal.SBytes
+
+import Control.Monad.ST
 
 default ()
 
@@ -103,7 +102,6 @@ instance Linear ByteString Word8
     partitions is bs = map fromList . partitions is $ listL bs
     isSubseqOf xs ys = B.all (`B.elem` ys) xs
     
-    -- | O(n) nub, O(1) memory.
     nub bs = runST $ do
         hs <- filled 256 False
         i_foldr (\ b io -> writeM hs b True >> io) (return ()) bs
@@ -112,7 +110,6 @@ instance Linear ByteString Word8
         done' :: STBytes s Word8 Bool -> ST s ByteString
         done' =  fmap fromList . ifoldrM (\ i b is -> pure $ b ? (i : is) $ is) []
     
-    -- O(n) nubBy, O(1) memory.
     nubBy f = fromList . i_foldr (\ b es -> any (f b) es ? es $ (b : es)) [] . nub
 
 instance Split ByteString Word8
@@ -225,6 +222,4 @@ instance Freeze (ST s) (STBytes s Int Word8) ByteString where freeze = done
 
 done :: STBytes s Int Word8 -> ST s ByteString
 done =  fmap fromList . getLeft
-
-
 

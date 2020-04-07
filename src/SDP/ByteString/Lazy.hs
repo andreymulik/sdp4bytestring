@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
-{-# LANGUAGE BangPatterns, MagicHash #-}
+{-# LANGUAGE MagicHash #-}
 
 {- |
     Module      :  SDP.ByteString.Lazy
@@ -32,21 +32,20 @@ where
 
 import Prelude ()
 import SDP.SafePrelude
+import SDP.ByteList.STUblist
+import SDP.ByteList.ST
 
 import SDP.IndexedM
+import SDP.Sort
 
 import Data.ByteString.Lazy.Internal ( ByteString (..) )
 import qualified Data.ByteString.Lazy as B
 import qualified SDP.ByteString as S
 
-import Control.Monad.ST
-
-import SDP.ByteList.STUblist
-import SDP.ByteList.ST
-
 import SDP.Internal.SBytes
 import SDP.SortM.Tim
-import SDP.Sort
+
+import Control.Monad.ST
 
 default ()
 
@@ -208,8 +207,4 @@ done = freeze
 
 lim :: Int
 lim =  1024
-
-
-
-
 
