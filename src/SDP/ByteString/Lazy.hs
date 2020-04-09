@@ -38,11 +38,12 @@ import SDP.ByteList.ST
 import SDP.IndexedM
 import SDP.Sort
 
+import Data.Function
+
 import Data.ByteString.Lazy.Internal ( ByteString (..) )
 import qualified Data.ByteString.Lazy as B
 import qualified SDP.ByteString as S
 
-import SDP.Internal.SBytes
 import SDP.SortM.Tim
 
 import Control.Monad.ST
@@ -77,7 +78,7 @@ instance Linear ByteString Word8
     intersperse = B.intersperse
     filter      = B.filter
     
-    listR  = \ bs -> let n = sizeOf bs in [ bs .! i | i <- [n - 1, n - 2 .. 0] ]
+    listR  = \ bs -> let n = sizeOf bs in (bs .!) <$> [n - 1, n - 2 .. 0]
     single = B.singleton
     listL  = B.unpack
     (++)   = B.append
@@ -113,7 +114,7 @@ instance Split ByteString Word8
     
     isPrefixOf = B.isPrefixOf
     isSuffixOf = B.isSuffixOf
-    isInfixOf  = \ xs ys -> listL xs `isInfixOf` listL ys
+    isInfixOf  = on isInfixOf listL
     
     takeWhile = B.takeWhile
     dropWhile = B.dropWhile
@@ -152,13 +153,13 @@ instance Indexed ByteString Int Word8
         u = fst $ maximumBy cmpfst ascs
     es // ascs = assoc (bounds es) (assocs es ++ ascs)
     
-    fromIndexed es = assoc bnds' [ (bnds `offset` i, e) | (i, e) <- assocs es ]
+    fromIndexed es = assoc bnds' [ (offset bnds i, e) | (i, e) <- assocs es ]
       where
         bnds' = defaultBounds (sizeOf es)
         bnds  = bounds es
     
-    (.$) p = fmap fromEnum . B.findIndex   p
-    (*$) p = fmap fromEnum . B.findIndices p
+    (.$) = fmap fromEnum ... B.findIndex
+    (*$) = fmap fromEnum ... B.findIndices
 
 instance Sort ByteString Word8
   where
@@ -168,10 +169,7 @@ instance Sort ByteString Word8
 
 instance Thaw (ST s) ByteString (STUblist s Word8)
   where
-    thaw = fmap STUblist . go
-      where
-        go :: ByteString -> ST s [STBytes# s Word8]
-        go es = case es of {Chunk bs bss -> liftA2 (:) (thaw bs) (go bss); _ -> return [] }
+    thaw = fmap STUblist . B.foldrChunks (liftA2 (:) . thaw) (return [])
 
 instance Thaw (ST s) ByteString (STByteList s Int Word8)
   where
@@ -207,4 +205,6 @@ done = freeze
 
 lim :: Int
 lim =  1024
+
+
 

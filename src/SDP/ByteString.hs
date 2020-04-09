@@ -108,7 +108,7 @@ instance Linear ByteString Word8
         done' hs
       where
         done' :: STBytes s Word8 Bool -> ST s ByteString
-        done' =  fmap fromList . ifoldrM (\ i b is -> pure $ b ? (i : is) $ is) []
+        done' =  fmap fromList . ifoldrM (\ i b is -> return $ b ? (i : is) $ is) []
     
     nubBy f = fromList . i_foldr (\ b es -> any (f b) es ? es $ (b : es)) [] . nub
 
