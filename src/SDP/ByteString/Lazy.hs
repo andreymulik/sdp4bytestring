@@ -1,5 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
-{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, MagicHash, Unsafe #-}
 
 {- |
     Module      :  SDP.ByteString.Lazy
@@ -22,7 +21,9 @@
 module SDP.ByteString.Lazy
 (
   -- * Exports
-  module SDP.IndexedM,
+  module System.IO.Classes,
+  
+  module SDP.Indexed,
   module SDP.Sort,
   
   -- * ByteString
@@ -35,7 +36,7 @@ import SDP.SafePrelude
 import SDP.ByteList.STUblist
 import SDP.ByteList.ST
 
-import SDP.IndexedM
+import SDP.Indexed
 import SDP.Sort
 
 import Data.Function
@@ -47,6 +48,8 @@ import qualified SDP.ByteString as S
 import SDP.SortM.Tim
 
 import Control.Monad.ST
+
+import System.IO.Classes
 
 default ()
 
@@ -197,6 +200,23 @@ instance Estimate ByteString
     
     Empty <.=> n = 0 <=> n
     (Chunk ch chs) <.=> n = ch .> n ? GT $ chs <.=> (n - sizeOf ch)
+
+--------------------------------------------------------------------------------
+
+{- IsFile and IsTextFile instances. -}
+
+instance IsFile ByteString
+  where
+    hGetContents = B.hGetContents
+    hPutContents = B.hPut
+
+instance IsTextFile ByteString
+  where
+    hGetLine = fmap B.fromStrict . S.hGetLine
+    hPutStr  = B.hPut
+    
+    -- | Prints bytestring and CR (0xa) character in Handle encoding.
+    hPutStrLn h bs = hPutStr h bs >> hPutChar h '\n'
 
 --------------------------------------------------------------------------------
 

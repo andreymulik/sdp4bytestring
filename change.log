@@ -1,20 +1,20 @@
 version 0.2:
   ADDED:
-    Split, Sort, Estimate, Thaw and Freeze instances for strict ByteString.
+    * Split, Sort, Estimate, Thaw and Freeze instances for strict ByteString.
     
-    Lazy ByteString (Bordered, Linear, Split, Indexed, Sort, Estimate, Thaw and
+    * Lazy ByteString (Bordered, Linear, Split, Indexed, Sort, Estimate, Thaw and
     Freeze instances) with test suite.
+    
+    * sdp-io support
   
   IMPROVED
-    Strict ByteString tests.
+    * Strict ByteString tests.
 
 version 0.0.1.0:
   ADDED:
-    Bordered, Linear and Indexed instances
-    Test suite for strict ByteString
+    * Bordered, Linear and Indexed instances
+    * Test suite for strict ByteString
 
 version 0.1:
-  Stable release for sdp-0.1
-
-
+  * Stable release for sdp-0.1
 

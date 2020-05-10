@@ -1,5 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
-{-# LANGUAGE Unsafe, BangPatterns, MagicHash, UnboxedTuples #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, MagicHash, Unsafe #-}
+
 
 {- |
     Module      :  SDP.ByteString
@@ -13,15 +13,13 @@
     This wrapper is made for the convenience of using ByteString with other data
     structures - all the original functionality is available, some missing
     generalized functions have also been written.
-    
-    Unfortunately, some functions from ByteString cannot be generalized
-    (Functor, for example). This wrapper simplifies the work with the library,
-    but some things are simply impossible to do.
 -}
 module SDP.ByteString
 (
   -- * Exports
-  module SDP.IndexedM,
+  module System.IO.Classes,
+  
+  module SDP.Indexed,
   module SDP.Sort,
   module SDP.Scan,
   
@@ -34,7 +32,7 @@ import Prelude ()
 import SDP.SafePrelude
 import SDP.Bytes.ST
 
-import SDP.IndexedM
+import SDP.Indexed
 import SDP.Sort
 import SDP.Scan
 
@@ -51,6 +49,8 @@ import Foreign.Ptr      ( plusPtr )
 import SDP.Internal.SBytes
 
 import Control.Monad.ST
+
+import System.IO.Classes
 
 default ()
 
@@ -220,6 +220,26 @@ instance Freeze (ST s) (STBytes s Int Word8) ByteString where freeze = done
 
 --------------------------------------------------------------------------------
 
+{- IsFile and IsTextFile instances. -}
+
+instance IsFile ByteString
+  where
+    hGetContents = B.hGetContents
+    hPutContents = B.hPut
+
+instance IsTextFile ByteString
+  where
+    hGetLine = B.hGetLine
+    hPutStr  = B.hPut
+    
+    -- | Prints bytestring and CR (0xa) character in Handle encoding.
+    hPutStrLn h bs = hPutStr h bs >> hPutChar h '\n'
+
+--------------------------------------------------------------------------------
+
 done :: STBytes s Int Word8 -> ST s ByteString
 done =  fmap fromList . getLeft
+
+
+
 
