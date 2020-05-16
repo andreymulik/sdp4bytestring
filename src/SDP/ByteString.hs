@@ -1,6 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, MagicHash, Unsafe #-}
 
-
 {- |
     Module      :  SDP.ByteString
     Copyright   :  (c) Andrey Mulik 2019
@@ -46,7 +45,7 @@ import qualified Data.ByteString as B
 import Foreign.Storable ( Storable ( poke ) )
 import Foreign.Ptr      ( plusPtr )
 
-import SDP.Internal.SBytes
+import SDP.Prim.SBytes
 
 import Control.Monad.ST
 
@@ -63,7 +62,7 @@ type SByteString = ByteString
 
 {- Bordered, Linear and Split instances. -}
 
-instance Bordered ByteString Int Word8
+instance Bordered ByteString Int
   where
     lower      = const 0
     sizeOf     = B.length
@@ -209,14 +208,9 @@ instance Estimate ByteString
 
 {- Thaw and Freeze instances. -}
 
-instance Thaw (ST s) ByteString (STBytes# s Word8)    where thaw = fromIndexed'
-instance Thaw (ST s) ByteString (STBytes s Int Word8) where thaw = fromIndexed'
+instance Thaw (ST s) ByteString (STBytes# s Word8) where thaw = fromIndexed'
 
-instance Freeze (ST s) (STBytes# s Word8) ByteString
-  where
-    freeze = fmap fromList . getLeft
-
-instance Freeze (ST s) (STBytes s Int Word8) ByteString where freeze = done
+instance Freeze (ST s) (STBytes# s Word8) ByteString where freeze = done
 
 --------------------------------------------------------------------------------
 
@@ -229,17 +223,13 @@ instance IsFile ByteString
 
 instance IsTextFile ByteString
   where
+    -- | Print bytestring and CR (0xa) character in Handle encoding.
+    hPutStrLn h bs = hPutStr h bs >> hPutChar h '\n'
     hGetLine = B.hGetLine
     hPutStr  = B.hPut
-    
-    -- | Prints bytestring and CR (0xa) character in Handle encoding.
-    hPutStrLn h bs = hPutStr h bs >> hPutChar h '\n'
 
 --------------------------------------------------------------------------------
 
-done :: STBytes s Int Word8 -> ST s ByteString
+done :: STBytes# s Word8 -> ST s ByteString
 done =  fmap fromList . getLeft
-
-
-
 

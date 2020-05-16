@@ -13,10 +13,6 @@
     This wrapper is made for the convenience of using ByteString with other data
     structures - all the original functionality is available, some missing
     generalized functions have also been written.
-    
-    Unfortunately, some functions from ByteString cannot be generalized
-    (Functor, for example). This wrapper simplifies the work with the library,
-    but some things are simply impossible to do.
 -}
 module SDP.ByteString.Lazy
 (
@@ -45,6 +41,7 @@ import Data.ByteString.Lazy.Internal ( ByteString (..) )
 import qualified Data.ByteString.Lazy as B
 import qualified SDP.ByteString as S
 
+import SDP.Templates.AnyChunks
 import SDP.SortM.Tim
 
 import Control.Monad.ST
@@ -62,11 +59,10 @@ type LByteString = ByteString
 
 {- Bordered, Linear and Split instances. -}
 
-instance Bordered ByteString Int Word8
+instance Bordered ByteString Int
   where
     lower      = const 0
     sizeOf     = fromEnum . B.length
-    
     upper   bs = sizeOf bs - 1
     bounds  bs = (0, sizeOf bs - 1)
     indices bs = [0 .. sizeOf bs - 1]
@@ -172,19 +168,11 @@ instance Sort ByteString Word8
 
 instance Thaw (ST s) ByteString (STUblist s Word8)
   where
-    thaw = fmap STUblist . B.foldrChunks (liftA2 (:) . thaw) (return [])
-
-instance Thaw (ST s) ByteString (STByteList s Int Word8)
-  where
-    thaw bs = STByteList 0 (sizeOf bs - 1) <$> thaw bs
+    thaw = fmap AnyChunks . B.foldrChunks (liftA2 (:) . thaw) (return [])
 
 instance Freeze (ST s) (STUblist s Word8) ByteString
   where
-    freeze (STUblist es) = foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty es
-
-instance Freeze (ST s) (STByteList s Int Word8) ByteString
-  where
-    freeze (STByteList _ _ bs) = freeze bs
+    freeze (AnyChunks es) = foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty es
 
 --------------------------------------------------------------------------------
 
@@ -212,11 +200,10 @@ instance IsFile ByteString
 
 instance IsTextFile ByteString
   where
-    hGetLine = fmap B.fromStrict . S.hGetLine
-    hPutStr  = B.hPut
-    
     -- | Prints bytestring and CR (0xa) character in Handle encoding.
     hPutStrLn h bs = hPutStr h bs >> hPutChar h '\n'
+    hGetLine = fmap B.fromStrict . S.hGetLine
+    hPutStr  = B.hPut
 
 --------------------------------------------------------------------------------
 
@@ -225,6 +212,4 @@ done = freeze
 
 lim :: Int
 lim =  1024
-
-
 
