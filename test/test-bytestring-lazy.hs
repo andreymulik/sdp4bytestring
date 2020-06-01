@@ -1,10 +1,11 @@
 module Main where
 
-import Test.Framework
 import Test.Framework.Providers.QuickCheck2
+import Test.Framework
+
+import Test.QuickCheck.Instances.ByteString ()
 
 import SDP.ByteString.Lazy
-import SDP.ByteString.Lazy.Related ()
 
 import Test.SDP
 
@@ -116,5 +117,4 @@ sortProp =  sortTest
 
 estimateProp :: TestEstimate ByteString
 estimateProp =  estimateTest
-
 
