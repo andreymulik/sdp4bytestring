@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, MagicHash, Unsafe #-}
+{-# LANGUAGE Unsafe, MagicHash, MultiParamTypeClasses, FlexibleInstances #-}
 
 {- |
     Module      :  SDP.ByteString
@@ -74,8 +74,6 @@ instance Bordered ByteString Int
 instance Linear ByteString Word8
   where
     single = B.singleton
-    lzero  = B.empty
-    isNull = B.null
     toHead = B.cons
     toLast = B.snoc
     head   = B.head
@@ -172,7 +170,12 @@ instance Sort ByteString Word8
 
 --------------------------------------------------------------------------------
 
-{- IFold, Scan and Estimate instances. -}
+{- Nullable, IFold, Scan and Estimate instances. -}
+
+instance Nullable ByteString
+  where
+    lzero  = B.empty
+    isNull = B.null
 
 instance IFold ByteString Int Word8
   where
@@ -232,4 +235,6 @@ instance IsTextFile ByteString
 
 done :: STBytes# s Word8 -> ST s ByteString
 done =  fmap fromList . getLeft
+
+
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, MagicHash, Unsafe #-}
+{-# LANGUAGE Unsafe, MagicHash, MultiParamTypeClasses, FlexibleInstances #-}
 
 {- |
     Module      :  SDP.ByteString.Lazy
@@ -31,7 +31,6 @@ import Prelude ()
 import SDP.SafePrelude
 import SDP.ByteList.STUblist
 import SDP.ByteList.ST
-
 import SDP.Indexed
 import SDP.Sort
 
@@ -81,8 +80,7 @@ instance Linear ByteString Word8
     single = B.singleton
     listL  = B.unpack
     (++)   = B.append
-    lzero  = B.empty
-    isNull = B.null
+    
     toHead = B.cons
     toLast = B.snoc
     head   = B.head
@@ -175,6 +173,13 @@ instance Freeze (ST s) (STUblist s Word8) ByteString
     freeze (AnyChunks es) = foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty es
 
 --------------------------------------------------------------------------------
+
+{- Nullable and Estimate instances. -}
+
+instance Nullable ByteString
+  where
+    lzero  = B.empty
+    isNull = B.null
 
 instance Estimate ByteString
   where
