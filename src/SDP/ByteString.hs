@@ -60,6 +60,28 @@ type SByteString = ByteString
 
 --------------------------------------------------------------------------------
 
+{- Nullable and Estimate instances. -}
+
+instance Nullable ByteString
+  where
+    lzero  = B.empty
+    isNull = B.null
+
+instance Estimate ByteString
+  where
+    xs <==> ys = sizeOf xs <=> sizeOf ys
+    xs .>.  ys = sizeOf xs  >  sizeOf ys
+    xs .<.  ys = sizeOf xs  <  sizeOf ys
+    xs .<=. ys = sizeOf xs <=  sizeOf ys
+    xs .>=. ys = sizeOf xs >=  sizeOf ys
+    xs <.=> c2 = sizeOf xs <=> c2
+    xs  .>  c2 = sizeOf xs  >  c2
+    xs  .<  c2 = sizeOf xs  <  c2
+    xs .>=  c2 = sizeOf xs >=  c2
+    xs .<=  c2 = sizeOf xs <=  c2
+
+--------------------------------------------------------------------------------
+
 {- Bordered, Linear and Split instances. -}
 
 instance Bordered ByteString Int
@@ -89,6 +111,7 @@ instance Linear ByteString Word8
     listR = \ bs -> let n = sizeOf bs in [ bs .! i | i <- [n - 1, n - 2 .. 0] ]
     listL = B.unpack
     (++)  = B.append
+    (!^)  = B.index
     
     concat      = B.concat . toList
     intersperse = B.intersperse
@@ -133,7 +156,7 @@ instance Split ByteString Word8
 
 --------------------------------------------------------------------------------
 
-{- Indexed and Sort instances. -}
+{- Indexed instance. -}
 
 instance Indexed ByteString Int Word8
   where
@@ -148,9 +171,7 @@ instance Indexed ByteString Int Word8
         ies = [ (offset bnds i, e) | (i, e) <- ascs, inRange bnds i ]
         n   = size bnds
     
-    (!^) = B.index
     (.!) = B.index
-    (!)  = B.index
     
     Z  // ascs = null ascs ? Z $ assoc (l, u) ascs
       where
@@ -164,18 +185,17 @@ instance Indexed ByteString Int Word8
     (.$) = B.findIndex
     (*$) = B.findIndices
 
+--------------------------------------------------------------------------------
+
+{- Sort instance. -}
+
 instance Sort ByteString Word8
   where
     sortBy f bs = runST $ do es' <- thaw bs; timSortBy f es'; done es'
 
 --------------------------------------------------------------------------------
 
-{- Nullable, IFold, Scan and Estimate instances. -}
-
-instance Nullable ByteString
-  where
-    lzero  = B.empty
-    isNull = B.null
+{- IFold and Scan instances. -}
 
 instance IFold ByteString Int Word8
   where
@@ -193,19 +213,6 @@ instance IFold ByteString Int Word8
     i_foldl = B.foldl
 
 instance Scan ByteString Word8
-
-instance Estimate ByteString
-  where
-    xs <==> ys = sizeOf xs <=> sizeOf ys
-    xs .>.  ys = sizeOf xs  >  sizeOf ys
-    xs .<.  ys = sizeOf xs  <  sizeOf ys
-    xs .<=. ys = sizeOf xs <=  sizeOf ys
-    xs .>=. ys = sizeOf xs >=  sizeOf ys
-    xs <.=> c2 = sizeOf xs <=> c2
-    xs  .>  c2 = sizeOf xs  >  c2
-    xs  .<  c2 = sizeOf xs  <  c2
-    xs .>=  c2 = sizeOf xs >=  c2
-    xs .<=  c2 = sizeOf xs <=  c2
 
 --------------------------------------------------------------------------------
 
@@ -235,6 +242,4 @@ instance IsTextFile ByteString
 
 done :: STBytes# s Word8 -> ST s ByteString
 done =  fmap fromList . getLeft
-
-
 

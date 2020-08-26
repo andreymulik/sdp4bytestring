@@ -81,6 +81,8 @@ instance Linear ByteString Word8
     listL  = B.unpack
     (++)   = B.append
     
+    (!^) es = B.index es . toEnum
+    
     toHead = B.cons
     toLast = B.snoc
     head   = B.head
@@ -140,9 +142,7 @@ instance Indexed ByteString Int Word8
             (ch, rest) = partition (\ (i, _) -> i < nl) ies'
             nl = cl + lim
     
-    (!^) es = B.index es . toEnum
     (.!) es = B.index es . toEnum
-    (!)  es = B.index es . toEnum
     
     Z  // ascs = null ascs ? Z $ assoc (l, u) ascs
       where
