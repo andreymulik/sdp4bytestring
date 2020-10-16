@@ -29,23 +29,23 @@ where
 
 import Prelude ()
 import SDP.SafePrelude
-import SDP.Bytes.ST
-
 import SDP.Indexed
 import SDP.Sort
 import SDP.Scan
 
 import SDP.SortM.Tim
 
-import Data.ByteString          (  ByteString  )
-import Data.ByteString.Internal ( unsafeCreate )
+import SDP.Prim.SBytes
+import SDP.Bytes.ST
 
+import Data.ByteString.Internal ( unsafeCreate )
+import Data.ByteString          (  ByteString  )
 import qualified Data.ByteString as B
+
+import Data.Function
 
 import Foreign.Storable ( Storable ( poke ) )
 import Foreign.Ptr      ( plusPtr )
-
-import SDP.Prim.SBytes
 
 import Control.Monad.ST
 
@@ -69,16 +69,17 @@ instance Nullable ByteString
 
 instance Estimate ByteString
   where
-    xs <==> ys = sizeOf xs <=> sizeOf ys
-    xs .>.  ys = sizeOf xs  >  sizeOf ys
-    xs .<.  ys = sizeOf xs  <  sizeOf ys
-    xs .<=. ys = sizeOf xs <=  sizeOf ys
-    xs .>=. ys = sizeOf xs >=  sizeOf ys
-    xs <.=> c2 = sizeOf xs <=> c2
-    xs  .>  c2 = sizeOf xs  >  c2
-    xs  .<  c2 = sizeOf xs  <  c2
-    xs .>=  c2 = sizeOf xs >=  c2
-    xs .<=  c2 = sizeOf xs <=  c2
+    (<==>) = on (<=>) sizeOf
+    (.>.)  = on  (>)  sizeOf
+    (.<.)  = on  (<)  sizeOf
+    (.<=.) = on  (<=) sizeOf
+    (.>=.) = on  (>=) sizeOf
+    
+    (<.=>) = (<=>) . sizeOf
+    (.>)   = (>)   . sizeOf
+    (.<)   = (<)   . sizeOf
+    (.>=)  = (>=)  . sizeOf
+    (.<=)  = (<=)  . sizeOf
 
 --------------------------------------------------------------------------------
 
@@ -112,6 +113,8 @@ instance Linear ByteString Word8
     listL = B.unpack
     (++)  = B.append
     (!^)  = B.index
+    
+    write bs = (bs //) . single ... (,)
     
     concat      = B.concat . toList
     intersperse = B.intersperse
@@ -156,11 +159,28 @@ instance Split ByteString Word8
 
 --------------------------------------------------------------------------------
 
-{- Indexed instance. -}
+{- Map and Indexed instances. -}
+
+instance Map ByteString Int Word8
+  where
+    toMap = toMap' 0
+    
+    toMap' defvalue ascs = null ascs ? Z $ assoc' (l, u) defvalue ascs
+      where
+        l = fst $ minimumBy cmpfst ascs
+        u = fst $ maximumBy cmpfst ascs
+    
+    Z  // ascs = toMap ascs
+    es // ascs = assoc (bounds es) (assocs es ++ ascs)
+    
+    (.!) = B.index
+    (.$) = B.findIndex
+    (*$) = B.findIndices
 
 instance Indexed ByteString Int Word8
   where
-    assoc  bnds ascs = assoc' bnds 0 ascs
+    assoc = flip assoc' 0
+    
     assoc' bnds defvalue ascs = unsafeCreate n fromAssocIO
       where
         fromAssocIO ptr = fill >> writeBS
@@ -171,19 +191,8 @@ instance Indexed ByteString Int Word8
         ies = [ (offset bnds i, e) | (i, e) <- ascs, inRange bnds i ]
         n   = size bnds
     
-    (.!) = B.index
-    
-    Z  // ascs = null ascs ? Z $ assoc (l, u) ascs
-      where
-        l = fst $ minimumBy cmpfst ascs
-        u = fst $ maximumBy cmpfst ascs
-    es // ascs = assoc (bounds es) (assocs es ++ ascs)
-    
     fromIndexed es = let n = sizeOf es in unsafeCreate n $
         \ ptr -> forM_ [0 .. n - 1] $ \ i -> poke (ptr `plusPtr` i) (es !^ i)
-    
-    (.$) = B.findIndex
-    (*$) = B.findIndices
 
 --------------------------------------------------------------------------------
 
@@ -242,4 +251,5 @@ instance IsTextFile ByteString
 
 done :: STBytes# s Word8 -> ST s ByteString
 done =  fmap fromList . getLeft
+
 

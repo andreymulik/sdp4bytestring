@@ -83,6 +83,8 @@ instance Linear ByteString Word8
     
     (!^) es = B.index es . toEnum
     
+    write bs = (bs //) . single ... (,)
+    
     toHead = B.cons
     toLast = B.snoc
     head   = B.head
@@ -126,11 +128,29 @@ instance Split ByteString Word8
 
 --------------------------------------------------------------------------------
 
-{- Indexed and Sort instances. -}
+{- Map, Indexed and Sort instances. -}
+
+instance Map ByteString Int Word8
+  where
+    toMap = toMap' 0
+    
+    toMap' defvalue ascs = null ascs ? Z $ assoc' (l, u) defvalue ascs
+      where
+        l = fst $ minimumBy cmpfst ascs
+        u = fst $ maximumBy cmpfst ascs
+    
+    (.!) es = B.index es . toEnum
+    
+    Z  // ascs = toMap ascs
+    es // ascs = assoc (bounds es) (assocs es ++ ascs)
+    
+    (.$) = fmap fromEnum ... B.findIndex
+    (*$) = fmap fromEnum ... B.findIndices
 
 instance Indexed ByteString Int Word8
   where
-    assoc  bnds ascs = assoc' bnds 0 ascs
+    assoc = flip assoc' 0
+    
     assoc' bnds@(l, _) defvalue ascs = B.fromChunks $
         go l [ (offset bnds i, e) | (i, e) <- ascs, inRange bnds i ]
       where
@@ -142,21 +162,10 @@ instance Indexed ByteString Int Word8
             (ch, rest) = partition (\ (i, _) -> i < nl) ies'
             nl = cl + lim
     
-    (.!) es = B.index es . toEnum
-    
-    Z  // ascs = null ascs ? Z $ assoc (l, u) ascs
-      where
-        l = fst $ minimumBy cmpfst ascs
-        u = fst $ maximumBy cmpfst ascs
-    es // ascs = assoc (bounds es) (assocs es ++ ascs)
-    
     fromIndexed es = assoc bnds' [ (offset bnds i, e) | (i, e) <- assocs es ]
       where
         bnds' = defaultBounds (sizeOf es)
         bnds  = bounds es
-    
-    (.$) = fmap fromEnum ... B.findIndex
-    (*$) = fmap fromEnum ... B.findIndices
 
 instance Sort ByteString Word8
   where
@@ -217,4 +226,5 @@ done = freeze
 
 lim :: Int
 lim =  1024
+
 
