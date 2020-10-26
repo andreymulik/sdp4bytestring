@@ -98,7 +98,7 @@ instance Linear ByteString Word8
     -- | O(n) nub, requires O(1) memory.
     nub bs = runST $ do
         hs <- filled 256 False
-        B.foldr (\ b io -> writeM hs b True >> io) (return ()) bs
+        B.foldr (\ b io -> writeM' hs b True >> io) (return ()) bs
         done' hs
       where
         done' :: STByteList s Word8 Bool -> ST s ByteString

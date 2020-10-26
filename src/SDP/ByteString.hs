@@ -127,7 +127,7 @@ instance Linear ByteString Word8
     
     nub bs = runST $ do
         hs <- filled 256 False
-        i_foldr (\ b io -> writeM hs b True >> io) (return ()) bs
+        i_foldr (\ b io -> writeM' hs b True >> io) (return ()) bs
         done' hs
       where
         done' :: STBytes s Word8 Bool -> ST s ByteString
