@@ -106,6 +106,17 @@ instance Linear ByteString Word8
     
     -- O(n) nubBy, requires O(1) memory.
     nubBy f = fromList . B.foldr (\ b es -> any (f b) es ? es $ (b : es)) [] . nub
+    
+    ofoldr f = \ base bs ->
+      let n = sizeOf bs; go i = n == i ? base $ f i (bs !^ i) (go $ i + 1)
+      in  go 0
+    
+    ofoldl f = \ base bs ->
+      let go i = -1 == i ? base $ f i (go $ i + 1) (bs !^ i)
+      in  go (upper bs)
+    
+    o_foldr = B.foldr
+    o_foldl = B.foldl
 
 instance Split ByteString Word8
   where
@@ -146,6 +157,9 @@ instance Map ByteString Int Word8
     
     (.$) = fmap fromEnum ... B.findIndex
     (*$) = fmap fromEnum ... B.findIndices
+    
+    kfoldr = ofoldr
+    kfoldl = ofoldl
 
 instance Indexed ByteString Int Word8
   where
@@ -226,5 +240,6 @@ done = freeze
 
 lim :: Int
 lim =  1024
+
 
 

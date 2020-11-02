@@ -127,13 +127,24 @@ instance Linear ByteString Word8
     
     nub bs = runST $ do
         hs <- filled 256 False
-        k_foldr (\ b io -> writeM' hs b True >> io) (return ()) bs
+        o_foldr (\ b io -> writeM' hs b True >> io) (return ()) bs
         done' hs
       where
         done' :: STBytes s Word8 Bool -> ST s ByteString
         done' =  fmap fromList . kfoldrM (\ i b is -> return $ b ? (i : is) $ is) []
     
-    nubBy f = fromList . k_foldr (\ b es -> any (f b) es ? es $ (b : es)) [] . nub
+    nubBy f = fromList . o_foldr (\ b es -> any (f b) es ? es $ b : es) [] . nub
+    
+    ofoldr f = \ base bs ->
+      let n = sizeOf bs; go i = n == i ? base $ f i (bs !^ i) (go $ i + 1)
+      in  go 0
+    
+    ofoldl f = \ base bs ->
+      let go i = -1 == i ? base $ f i (go $ i + 1) (bs !^ i)
+      in  go (upper bs)
+    
+    o_foldr = B.foldr
+    o_foldl = B.foldl
 
 instance Split ByteString Word8
   where
@@ -176,6 +187,9 @@ instance Map ByteString Int Word8
     (.!) = B.index
     (.$) = B.findIndex
     (*$) = B.findIndices
+    
+    kfoldr = ofoldr
+    kfoldl = ofoldl
 
 instance Indexed ByteString Int Word8
   where
@@ -196,30 +210,11 @@ instance Indexed ByteString Int Word8
 
 --------------------------------------------------------------------------------
 
-{- Sort instance. -}
+{- Sort and Scan instances. -}
 
 instance Sort ByteString Word8
   where
     sortBy f bs = runST $ do es' <- thaw bs; timSortBy f es'; done es'
-
---------------------------------------------------------------------------------
-
-{- KFold and Scan instances. -}
-
-instance KFold ByteString Int Word8
-  where
-    {-# INLINE kfoldr #-}
-    kfoldr f = \ base bs ->
-      let go i = sizeOf bs == i ? base $ f i (bs !^ i) (go $ i + 1)
-      in  go 0
-    
-    {-# INLINE kfoldl #-}
-    kfoldl f = \ base bs ->
-      let go i = -1 == i ? base $ f i (go $ i + 1) (bs !^ i)
-      in  go (upper bs)
-    
-    k_foldr = B.foldr
-    k_foldl = B.foldl
 
 instance Scan ByteString Word8
 
