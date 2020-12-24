@@ -42,8 +42,6 @@ import Data.ByteString.Internal ( unsafeCreate )
 import Data.ByteString          (  ByteString  )
 import qualified Data.ByteString as B
 
-import Data.Function
-
 import Foreign.Storable ( Storable ( poke ) )
 import Foreign.Ptr      ( plusPtr )
 
@@ -72,8 +70,8 @@ instance Estimate ByteString
     (<==>) = on (<=>) sizeOf
     (.>.)  = on  (>)  sizeOf
     (.<.)  = on  (<)  sizeOf
-    (.<=.) = on  (<=) sizeOf
-    (.>=.) = on  (>=) sizeOf
+    (.<=.) = on (<=)  sizeOf
+    (.>=.) = on (>=)  sizeOf
     
     (<.=>) = (<=>) . sizeOf
     (.>)   = (>)   . sizeOf
@@ -246,5 +244,7 @@ instance IsTextFile ByteString
 
 done :: STBytes# s Word8 -> ST s ByteString
 done =  fmap fromList . getLeft
+
+
 
 

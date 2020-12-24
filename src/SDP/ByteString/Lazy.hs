@@ -34,8 +34,6 @@ import SDP.ByteList.ST
 import SDP.Indexed
 import SDP.Sort
 
-import Data.Function
-
 import Data.ByteString.Lazy.Internal ( ByteString (..) )
 import qualified Data.ByteString.Lazy as B
 import qualified SDP.ByteString as S
@@ -104,7 +102,6 @@ instance Linear ByteString Word8
         done' :: STByteList s Word8 Bool -> ST s ByteString
         done' =  fmap fromList . kfoldrM (\ i b is -> pure $ b ? (i : is) $ is) []
     
-    -- O(n) nubBy, requires O(1) memory.
     nubBy f = fromList . B.foldr (\ b es -> any (f b) es ? es $ (b : es)) [] . nub
     
     ofoldr f = \ base bs ->
@@ -145,10 +142,7 @@ instance Map ByteString Int Word8
   where
     toMap = toMap' 0
     
-    toMap' defvalue ascs = null ascs ? Z $ assoc' (l, u) defvalue ascs
-      where
-        l = fst $ minimumBy cmpfst ascs
-        u = fst $ maximumBy cmpfst ascs
+    toMap' defvalue ascs = null ascs ? Z $ assoc' (ascsBounds ascs) defvalue ascs
     
     (.!) es = B.index es . toEnum
     
@@ -235,11 +229,12 @@ instance IsTextFile ByteString
 
 --------------------------------------------------------------------------------
 
+ascsBounds :: (Ord a) => [(a, b)] -> (a, a)
+ascsBounds =  \ ((x, _) : xs) -> foldr (\ (e, _) (mn, mx) -> (min mn e, max mx e)) (x, x) xs
+
 done :: STUblist s Word8 -> ST s ByteString
 done = freeze
 
 lim :: Int
 lim =  1024
-
-
 
