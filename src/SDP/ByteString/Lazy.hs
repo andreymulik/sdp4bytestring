@@ -1,4 +1,4 @@
-{-# LANGUAGE Unsafe, MagicHash, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE Trustworthy, MagicHash, MultiParamTypeClasses, FlexibleInstances #-}
 
 {- |
     Module      :  SDP.ByteString.Lazy
