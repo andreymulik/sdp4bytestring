@@ -23,7 +23,7 @@ module SDP.ByteString.Lazy
   module SDP.Sort,
   
   -- * ByteString
-  ByteString, LByteString
+  ByteString, LByteString, B.fromStrict, B.toStrict, B.fromChunks, B.toChunks
 )
 where
 
@@ -41,6 +41,9 @@ import qualified SDP.ByteString as S
 import SDP.Templates.AnyChunks
 import SDP.SortM.Tim
 
+import Data.Maybe
+
+import Control.Exception.SDP
 import Control.Monad.ST
 
 import System.IO.Classes
@@ -82,6 +85,12 @@ instance Linear ByteString Word8
     (!^) es = B.index es . toEnum
     
     write bs = (bs //) . single ... (,)
+    
+    uncons' = B.uncons
+    unsnoc' = B.unsnoc
+    
+    uncons = fromMaybe (pfailEx "uncons") . B.uncons
+    unsnoc = fromMaybe (pfailEx "unsnoc") . B.unsnoc
     
     toHead = B.cons
     toLast = B.snoc
@@ -233,8 +242,14 @@ ascsBounds :: (Ord a) => [(a, b)] -> (a, a)
 ascsBounds =  \ ((x, _) : xs) -> foldr (\ (e, _) (mn, mx) -> (min mn e, max mx e)) (x, x) xs
 
 done :: STUblist s Word8 -> ST s ByteString
-done = freeze
+done =  freeze
+
+pfailEx :: String -> a
+pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
 
 lim :: Int
 lim =  1024
+
+
+
 

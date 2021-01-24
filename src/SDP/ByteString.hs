@@ -42,9 +42,12 @@ import Data.ByteString.Internal ( unsafeCreate )
 import Data.ByteString          (  ByteString  )
 import qualified Data.ByteString as B
 
+import Data.Maybe
+
 import Foreign.Storable ( Storable ( poke ) )
 import Foreign.Ptr      ( plusPtr )
 
+import Control.Exception.SDP
 import Control.Monad.ST
 
 import System.IO.Classes
@@ -101,6 +104,12 @@ instance Linear ByteString Word8
     tail   = B.tail
     last   = B.last
     init   = B.init
+    
+    uncons' = B.uncons
+    unsnoc' = B.unsnoc
+    
+    uncons = fromMaybe (pfailEx "uncons") . B.uncons
+    unsnoc = fromMaybe (pfailEx "unsnoc") . B.unsnoc
     
     fromFoldable es = unsafeCreate (length es) fromFoldable'
       where
@@ -245,6 +254,7 @@ instance IsTextFile ByteString
 done :: STBytes# s Word8 -> ST s ByteString
 done =  fmap fromList . getLeft
 
-
+pfailEx :: String -> a
+pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
 
 

@@ -88,8 +88,8 @@ concatProp               =  concatTest
 
 {- Split property. -}
 
-splitProp :: TestSplit ByteString
-splitProp =  splitTest
+splitProp :: Word8 -> TestSplit (Medium ByteString)
+splitProp e n (Medium bs) = splitTest (e >) n bs
 
 --------------------------------------------------------------------------------
 
