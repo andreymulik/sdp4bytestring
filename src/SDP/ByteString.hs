@@ -29,11 +29,10 @@ where
 
 import Prelude ()
 import SDP.SafePrelude
+import SDP.SortM.Tim
 import SDP.Indexed
 import SDP.Sort
 import SDP.Scan
-
-import SDP.SortM.Tim
 
 import SDP.Prim.SBytes
 import SDP.Bytes.ST
@@ -42,13 +41,13 @@ import Data.ByteString.Internal ( unsafeCreate )
 import Data.ByteString          (  ByteString  )
 import qualified Data.ByteString as B
 
+import Data.Coerce
 import Data.Maybe
 
 import Foreign.Storable ( Storable ( poke ) )
 import Foreign.Ptr      ( plusPtr )
 
 import Control.Exception.SDP
-import Control.Monad.ST
 
 import System.IO.Classes
 
@@ -233,6 +232,10 @@ instance Thaw (ST s) ByteString (STBytes# s Word8) where thaw = fromIndexed'
 
 instance Freeze (ST s) (STBytes# s Word8) ByteString where freeze = done
 
+instance (MonadIO io) => Thaw io ByteString (MIOBytes# io Word8) where thaw = fromIndexed'
+
+instance (MonadIO io) => Freeze io (MIOBytes# io Word8) ByteString where freeze = stToMIO . done . coerce
+
 --------------------------------------------------------------------------------
 
 {- IsFile and IsTextFile instances. -}
@@ -256,5 +259,7 @@ done =  fmap fromList . getLeft
 
 pfailEx :: String -> a
 pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
+
+
 
 

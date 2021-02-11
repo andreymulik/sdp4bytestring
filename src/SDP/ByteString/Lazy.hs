@@ -29,6 +29,7 @@ where
 
 import Prelude ()
 import SDP.SafePrelude
+import SDP.ByteList.IOUblist
 import SDP.ByteList.STUblist
 import SDP.ByteList.ST
 import SDP.Indexed
@@ -44,7 +45,6 @@ import SDP.SortM.Tim
 import Data.Maybe
 
 import Control.Exception.SDP
-import Control.Monad.ST
 
 import System.IO.Classes
 
@@ -198,6 +198,14 @@ instance Freeze (ST s) (STUblist s Word8) ByteString
   where
     freeze (AnyChunks es) = foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty es
 
+instance (MonadIO io) => Thaw io ByteString (MIOUblist io Word8)
+  where
+    thaw = fmap AnyChunks . B.foldrChunks (liftA2 (:) . thaw) (return [])
+
+instance (MonadIO io) => Freeze io (MIOUblist io Word8) ByteString
+  where
+    freeze (AnyChunks es) = foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty es
+
 --------------------------------------------------------------------------------
 
 {- Nullable and Estimate instances. -}
@@ -249,7 +257,4 @@ pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
 
 lim :: Int
 lim =  1024
-
-
-
 
