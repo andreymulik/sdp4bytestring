@@ -234,15 +234,15 @@ instance Estimate ByteString
 
 instance IsFile ByteString
   where
-    hGetContents = B.hGetContents
-    hPutContents = B.hPut
+    hGetContents = liftIO  .  B.hGetContents
+    hPutContents = liftIO ... B.hPut
 
 instance IsTextFile ByteString
   where
-    -- | Prints bytestring and CR (0xa) character in Handle encoding.
-    hPutStrLn h bs = hPutStr h bs >> hPutChar h '\n'
-    hGetLine = fmap B.fromStrict . S.hGetLine
-    hPutStr  = B.hPut
+    -- | Prints bytestring with CR (0xa) character.
+    hPutStrLn h = liftIO  .  (>> hPutChar h '\n') . hPutStr h
+    hGetLine    = liftIO  .  fmap B.fromStrict . S.hGetLine
+    hPutStr     = liftIO ... B.hPut
 
 --------------------------------------------------------------------------------
 
