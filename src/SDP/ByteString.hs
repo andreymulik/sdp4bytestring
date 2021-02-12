@@ -70,16 +70,16 @@ instance Nullable ByteString
 instance Estimate ByteString
   where
     (<==>) = on (<=>) sizeOf
-    (.>.)  = on  (>)  sizeOf
-    (.<.)  = on  (<)  sizeOf
     (.<=.) = on (<=)  sizeOf
     (.>=.) = on (>=)  sizeOf
+    (.>.)  = on  (>)  sizeOf
+    (.<.)  = on  (<)  sizeOf
     
     (<.=>) = (<=>) . sizeOf
-    (.>)   = (>)   . sizeOf
-    (.<)   = (<)   . sizeOf
     (.>=)  = (>=)  . sizeOf
     (.<=)  = (<=)  . sizeOf
+    (.>)   = (>)   . sizeOf
+    (.<)   = (<)   . sizeOf
 
 --------------------------------------------------------------------------------
 
@@ -119,6 +119,7 @@ instance Linear ByteString Word8
     listL = B.unpack
     (++)  = B.append
     (!^)  = B.index
+    force = B.copy
     
     write bs = (bs //) . single ... (,)
     
@@ -218,9 +219,12 @@ instance Indexed ByteString Int Word8
 
 {- Sort and Scan instances. -}
 
+-- TODO: write counting sort.
 instance Sort ByteString Word8
   where
     sortBy f bs = runST $ do es' <- thaw bs; timSortBy f es'; done es'
+    
+    sortedBy f = sortedBy f . listL
 
 instance Scan ByteString Word8
 
@@ -259,6 +263,7 @@ done =  fmap fromList . getLeft
 
 pfailEx :: String -> a
 pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
+
 
 
 

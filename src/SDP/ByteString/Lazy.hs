@@ -94,6 +94,7 @@ instance Linear ByteString Word8
     
     toHead = B.cons
     toLast = B.snoc
+    force  = B.copy
     head   = B.head
     tail   = B.tail
     last   = B.last
@@ -187,6 +188,11 @@ instance Indexed ByteString Int Word8
 instance Sort ByteString Word8
   where
     sortBy f bs = runST $ do es' <- thaw bs; timSortBy f es'; done es'
+    
+    sortedBy _ Empty = True
+    sortedBy f (Chunk ch   Z) = sortedBy f ch
+    sortedBy f (Chunk Z  chs) = sortedBy f chs
+    sortedBy f (Chunk ch chs) = sortedBy f ch && last ch `f` head chs && sortedBy f chs
 
 --------------------------------------------------------------------------------
 
@@ -239,7 +245,6 @@ instance IsFile ByteString
 
 instance IsTextFile ByteString
   where
-    -- | Prints bytestring with CR (0xa) character.
     hPutStrLn h = liftIO  .  (>> hPutChar h '\n') . hPutStr h
     hGetLine    = liftIO  .  fmap B.fromStrict . S.hGetLine
     hPutStr     = liftIO ... B.hPut
