@@ -29,9 +29,11 @@ where
 
 import Prelude ()
 import SDP.SafePrelude
+import SDP.Templates.AnyChunks
 import SDP.ByteList.IOUblist
 import SDP.ByteList.STUblist
 import SDP.ByteList.ST
+import SDP.SortM.Tim
 import SDP.Indexed
 import SDP.Sort
 
@@ -39,9 +41,7 @@ import Data.ByteString.Lazy.Internal ( ByteString (..) )
 import qualified Data.ByteString.Lazy as B
 import qualified SDP.ByteString as S
 
-import SDP.Templates.AnyChunks
-import SDP.SortM.Tim
-
+import Data.Foldable as F ( foldrM )
 import Data.Maybe
 
 import Control.Exception.SDP
@@ -198,19 +198,19 @@ instance Sort ByteString Word8
 
 instance Thaw (ST s) ByteString (STUblist s Word8)
   where
-    thaw = fmap AnyChunks . B.foldrChunks (liftA2 (:) . thaw) (return [])
+    thaw = fromChunksM <=< B.foldrChunks (liftA2 (:) . thaw) (return [])
 
 instance Freeze (ST s) (STUblist s Word8) ByteString
   where
-    freeze (AnyChunks es) = foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty es
+    freeze = F.foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty . toChunks
 
 instance (MonadIO io) => Thaw io ByteString (MIOUblist io Word8)
   where
-    thaw = fmap AnyChunks . B.foldrChunks (liftA2 (:) . thaw) (return [])
+    thaw = fromChunksM <=< B.foldrChunks (liftA2 (:) . thaw) (return [])
 
 instance (MonadIO io) => Freeze io (MIOUblist io Word8) ByteString
   where
-    freeze (AnyChunks es) = foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty es
+    freeze = F.foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty . toChunks
 
 --------------------------------------------------------------------------------
 
