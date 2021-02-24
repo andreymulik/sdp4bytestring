@@ -7,11 +7,7 @@
     Maintainer  :  work.a.mulik@gmail.com
     Portability :  non-portable (GHC Extensions)
     
-    SDP.ByteString provides SDP instances for strict 'ByteString'.
-    
-    This wrapper is made for the convenience of using ByteString with other data
-    structures - all the original functionality is available, some missing
-    generalized functions have also been written.
+    "SDP.ByteString" provides @sdp@ instances for strict 'ByteString'.
 -}
 module SDP.ByteString
 (
@@ -72,8 +68,8 @@ instance Estimate ByteString
     (<==>) = on (<=>) sizeOf
     (.<=.) = on (<=)  sizeOf
     (.>=.) = on (>=)  sizeOf
-    (.>.)  = on  (>)  sizeOf
-    (.<.)  = on  (<)  sizeOf
+    (.>.)  = on (>)   sizeOf
+    (.<.)  = on (<)   sizeOf
     
     (<.=>) = (<=>) . sizeOf
     (.>=)  = (>=)  . sizeOf
@@ -263,7 +259,6 @@ done =  fmap fromList . getLeft
 
 pfailEx :: String -> a
 pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
-
 
 
 

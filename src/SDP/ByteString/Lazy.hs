@@ -7,12 +7,7 @@
     Maintainer  :  work.a.mulik@gmail.com
     Portability :  non-portable (GHC Extensions)
     
-    SDP.ByteString.Lazy provides 'Bordered', 'Linear', 'Split', 'Indexed',
-    'Sort', 'Thaw' and 'Freeze' instances for 'ByteString'.
-    
-    This wrapper is made for the convenience of using ByteString with other data
-    structures - all the original functionality is available, some missing
-    generalized functions have also been written.
+    "SDP.ByteString.Lazy" provides @sdp@ instances for lazy 'ByteString'.
 -}
 module SDP.ByteString.Lazy
 (
