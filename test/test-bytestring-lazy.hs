@@ -3,7 +3,7 @@ module Main where
 import Test.Framework.Providers.QuickCheck2
 import Test.Framework
 
-import Test.QuickCheck.Instances.ByteString ()
+import Test.QuickCheck.Instances ()
 
 import SDP.ByteString.Lazy
 
