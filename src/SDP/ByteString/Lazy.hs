@@ -61,6 +61,7 @@ instance Bordered ByteString Int
     upper   bs = sizeOf bs - 1
     bounds  bs = (0, sizeOf bs - 1)
     indices bs = [0 .. sizeOf bs - 1]
+    rebound bs = \ bnds -> size bnds `take` bs
     indexIn bs = \ i -> i >= 0 && i < sizeOf bs
 
 instance Linear ByteString Word8
@@ -86,7 +87,6 @@ instance Linear ByteString Word8
     
     uncons = fromMaybe (pfailEx "uncons") . B.uncons
     unsnoc = fromMaybe (pfailEx "unsnoc") . B.unsnoc
-    
     toHead = B.cons
     toLast = B.snoc
     force  = B.copy
