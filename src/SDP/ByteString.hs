@@ -1,8 +1,8 @@
-{-# LANGUAGE Trustworthy, MagicHash, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE Trustworthy, MagicHash, MultiParamTypeClasses, CPP, FlexibleInstances #-}
 
 {- |
     Module      :  SDP.ByteString
-    Copyright   :  (c) Andrey Mulik 2019
+    Copyright   :  (c) Andrey Mulik 2019-2021
     License     :  BSD-style
     Maintainer  :  work.a.mulik@gmail.com
     Portability :  non-portable (GHC Extensions)
@@ -25,6 +25,7 @@ where
 
 import Prelude ()
 import SDP.SafePrelude
+import SDP.Forceable
 import SDP.SortM.Tim
 import SDP.Indexed
 import SDP.Sort
@@ -56,12 +57,16 @@ type SByteString = ByteString
 
 --------------------------------------------------------------------------------
 
-{- Nullable and Estimate instances. -}
+{- Nullable, Forceable and Estimate instances. -}
 
 instance Nullable ByteString
   where
     lzero  = B.empty
     isNull = B.null
+
+#if MIN_VERSION_sdp(0,3,0)
+instance Forceable ByteString where force = B.copy
+#endif
 
 instance Estimate ByteString
   where
@@ -116,7 +121,6 @@ instance Linear ByteString Word8
     listL = B.unpack
     (++)  = B.append
     (!^)  = B.index
-    force = B.copy
     
     write bs = (bs //) . single ... (,)
     
@@ -144,14 +148,15 @@ instance Linear ByteString Word8
       in  go 0
     
     ofoldl f = \ base bs ->
-      let go i = -1 == i ? base $ f i (go $ i + 1) (bs !^ i)
+      let go i = -1 == i ? base $ f i (go $ i - 1) (bs !^ i)
       in  go (upper bs)
     
     o_foldr = B.foldr
     o_foldl = B.foldl
-
+#if !MIN_VERSION_sdp(0,3,0)
 instance Split ByteString Word8
   where
+#endif
     take  = B.take
     drop  = B.drop
     split = B.splitAt
@@ -159,18 +164,14 @@ instance Split ByteString Word8
     isPrefixOf = B.isPrefixOf
     isSuffixOf = B.isSuffixOf
     isInfixOf  = B.isInfixOf
-    
-    takeWhile = B.takeWhile
-    dropWhile = B.dropWhile
+    takeWhile  = B.takeWhile
+    dropWhile  = B.dropWhile
     
     spanl = B.span
     spanr = B.spanEnd
     
     breakl = B.break
     breakr = B.breakEnd
-    
-    prefix p = B.foldr (\ e c -> p e ? c + 1 $ 0) 0
-    suffix p = B.foldl (\ c e -> p e ? c + 1 $ 0) 0
 
 --------------------------------------------------------------------------------
 
@@ -260,6 +261,5 @@ done =  fmap fromList . getLeft
 
 pfailEx :: String -> a
 pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
-
 
 

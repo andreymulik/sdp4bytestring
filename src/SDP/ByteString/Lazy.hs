@@ -1,8 +1,8 @@
-{-# LANGUAGE Trustworthy, MagicHash, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE Trustworthy, MagicHash, CPP, MultiParamTypeClasses, FlexibleInstances #-}
 
 {- |
     Module      :  SDP.ByteString.Lazy
-    Copyright   :  (c) Andrey Mulik 2019
+    Copyright   :  (c) Andrey Mulik 2019-2021
     License     :  BSD-style
     Maintainer  :  work.a.mulik@gmail.com
     Portability :  non-portable (GHC Extensions)
@@ -29,6 +29,7 @@ import SDP.ByteList.IOUblist
 import SDP.ByteList.STUblist
 import SDP.ByteList.ST
 import SDP.SortM.Tim
+import SDP.Forceable
 import SDP.Indexed
 import SDP.Sort
 
@@ -89,7 +90,6 @@ instance Linear ByteString Word8
     unsnoc = fromMaybe (pfailEx "unsnoc") . B.unsnoc
     toHead = B.cons
     toLast = B.snoc
-    force  = B.copy
     head   = B.head
     tail   = B.tail
     last   = B.last
@@ -114,14 +114,15 @@ instance Linear ByteString Word8
       in  go 0
     
     ofoldl f = \ base bs ->
-      let go i = -1 == i ? base $ f i (go $ i + 1) (bs !^ i)
+      let go i = -1 == i ? base $ f i (go $ i - 1) (bs !^ i)
       in  go (upper bs)
     
     o_foldr = B.foldr
     o_foldl = B.foldl
-
+#if !MIN_VERSION_sdp(0,3,0)
 instance Split ByteString Word8
   where
+#endif
     take  = B.take    . toEnum
     drop  = B.drop    . toEnum
     split = B.splitAt . toEnum
@@ -135,9 +136,6 @@ instance Split ByteString Word8
     
     spanl  = B.span
     breakl = B.break
-    
-    prefix p = B.foldr (\ e c -> p e ? c + 1 $ 0) 0
-    suffix p = B.foldl (\ c e -> p e ? c + 1 $ 0) 0
 
 --------------------------------------------------------------------------------
 
@@ -209,12 +207,13 @@ instance (MonadIO io) => Freeze io (MIOUblist io Word8) ByteString
 
 --------------------------------------------------------------------------------
 
-{- Nullable and Estimate instances. -}
+{- Nullable, Forceable and Estimate instances. -}
 
-instance Nullable ByteString
-  where
-    lzero  = B.empty
-    isNull = B.null
+instance Nullable ByteString where lzero = B.empty; isNull = B.null
+
+#if MIN_VERSION_sdp(0,3,0)
+instance Forceable ByteString where force = B.copy
+#endif
 
 instance Estimate ByteString
   where
@@ -257,4 +256,5 @@ pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
 
 lim :: Int
 lim =  1024
+
 
