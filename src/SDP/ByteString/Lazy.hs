@@ -29,7 +29,6 @@ import SDP.ByteList.IOUblist
 import SDP.ByteList.STUblist
 import SDP.ByteList.ST
 import SDP.SortM.Tim
-import SDP.Forceable
 import SDP.Indexed
 import SDP.Sort
 
@@ -62,7 +61,6 @@ instance Bordered ByteString Int
     upper   bs = sizeOf bs - 1
     bounds  bs = (0, sizeOf bs - 1)
     indices bs = [0 .. sizeOf bs - 1]
-    rebound bs = \ bnds -> size bnds `take` bs
     indexIn bs = \ i -> i >= 0 && i < sizeOf bs
 
 instance Linear ByteString Word8
@@ -256,5 +254,7 @@ pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
 
 lim :: Int
 lim =  1024
+
+
 
 

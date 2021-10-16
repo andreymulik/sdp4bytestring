@@ -46,7 +46,7 @@ Library
   
   build-depends:
     base       >= 4.9  && < 5,
-    sdp        >= 0.3  && < 1,
+    sdp        >= 0.2  && < 1,
     sdp-io     >= 0.2  && < 1,
     bytestring >= 0.10 && < 0.11
   
