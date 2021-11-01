@@ -62,6 +62,9 @@ instance Bordered ByteString Int
     bounds  bs = (0, sizeOf bs - 1)
     indices bs = [0 .. sizeOf bs - 1]
     indexIn bs = \ i -> i >= 0 && i < sizeOf bs
+#if MIN_VERSION_sdp(0,3,0)
+    rebound    = take . size
+#endif
 
 instance Linear ByteString Word8
   where
@@ -254,7 +257,4 @@ pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
 
 lim :: Int
 lim =  1024
-
-
-
 
