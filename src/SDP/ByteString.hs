@@ -1,8 +1,16 @@
 {-# LANGUAGE Trustworthy, MagicHash, MultiParamTypeClasses, CPP, FlexibleInstances #-}
 
+#if defined(__GLASGOW_HASKELL__) && !MIN_VERSION_bytestring(0,10,12)
+#define SDP_LINEAR_EXTRAS
+#endif
+
+#ifdef SDP_LINEAR_EXTRAS
+{-# LANGUAGE TypeFamilies #-}
+#endif
+
 {- |
     Module      :  SDP.ByteString
-    Copyright   :  (c) Andrey Mulik 2019-2021
+    Copyright   :  (c) Andrey Mulik 2019-2022
     License     :  BSD-style
     Maintainer  :  work.a.mulik@gmail.com
     Portability :  non-portable (GHC Extensions)
@@ -43,6 +51,10 @@ import Data.Maybe
 import Foreign.Storable ( Storable ( poke ) )
 import Foreign.Ptr      ( plusPtr )
 
+#ifdef SDP_LINEAR_EXTRAS
+import qualified GHC.Exts as L
+#endif
+
 import Control.Exception.SDP
 
 import System.IO.Classes
@@ -62,6 +74,15 @@ instance Nullable ByteString
   where
     lzero  = B.empty
     isNull = B.null
+
+#ifdef SDP_LINEAR_EXTRAS
+instance L.IsList ByteString
+  where
+    type Item ByteString = Word8
+    
+    toList   = B.unpack
+    fromList = B.pack
+#endif
 
 #if MIN_VERSION_sdp(0,3,0)
 instance Forceable ByteString where force = B.copy
@@ -218,7 +239,6 @@ instance Indexed ByteString Int Word8
 
 {- Sort and Scan instances. -}
 
--- TODO: write counting sort.
 instance Sort ByteString Word8
   where
     sortBy f bs = runST $ do es' <- thaw bs; timSortBy f es'; done es'
@@ -235,9 +255,13 @@ instance Thaw (ST s) ByteString (STBytes# s Word8) where thaw = fromIndexed'
 
 instance Freeze (ST s) (STBytes# s Word8) ByteString where freeze = done
 
-instance (MonadIO io) => Thaw io ByteString (MIOBytes# io Word8) where thaw = fromIndexed'
+instance MonadIO io => Thaw io ByteString (MIOBytes# io Word8)
+  where
+    thaw = fromIndexed'
 
-instance (MonadIO io) => Freeze io (MIOBytes# io Word8) ByteString where freeze = stToMIO . done . coerce
+instance MonadIO io => Freeze io (MIOBytes# io Word8) ByteString
+  where
+    freeze = stToMIO . done . coerce
 
 --------------------------------------------------------------------------------
 
@@ -262,4 +286,5 @@ done =  fmap fromList . getLeft
 
 pfailEx :: String -> a
 pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
+
 

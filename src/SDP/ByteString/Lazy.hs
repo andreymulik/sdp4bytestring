@@ -1,8 +1,16 @@
 {-# LANGUAGE Trustworthy, MagicHash, CPP, MultiParamTypeClasses, FlexibleInstances #-}
 
+#if defined(__GLASGOW_HASKELL__) && !MIN_VERSION_bytestring(0,10,12)
+#define SDP_LINEAR_EXTRAS
+#endif
+
+#ifdef SDP_LINEAR_EXTRAS
+{-# LANGUAGE TypeFamilies #-}
+#endif
+
 {- |
     Module      :  SDP.ByteString.Lazy
-    Copyright   :  (c) Andrey Mulik 2019-2021
+    Copyright   :  (c) Andrey Mulik 2019-2022
     License     :  BSD-style
     Maintainer  :  work.a.mulik@gmail.com
     Portability :  non-portable (GHC Extensions)
@@ -39,6 +47,10 @@ import qualified SDP.ByteString as S
 import Data.Foldable as F ( foldrM )
 import Data.Maybe
 
+#ifdef SDP_LINEAR_EXTRAS
+import qualified GHC.Exts as L
+#endif
+
 import Control.Exception.SDP
 
 import System.IO.Classes
@@ -49,6 +61,19 @@ default ()
 
 -- | Type synonym to avoid ambiguity.
 type LByteString = ByteString
+
+--------------------------------------------------------------------------------
+
+{- IsList instance. -}
+
+#ifdef SDP_LINEAR_EXTRAS
+instance L.IsList ByteString
+  where
+    type Item ByteString = Word8
+    
+    toList   = B.unpack
+    fromList = B.pack
+#endif
 
 --------------------------------------------------------------------------------
 
