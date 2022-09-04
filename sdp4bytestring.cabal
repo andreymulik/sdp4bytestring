@@ -85,7 +85,7 @@ test-suite test-bytestring-strict
     
     test-framework             >= 0.8  && < 0.9,
     test-framework-quickcheck2 >= 0.3  && < 0.4
-
+  
   ghc-options: -Wall -Wno-orphans
 
 test-suite test-bytestring-lazy
@@ -113,8 +113,5 @@ test-suite test-bytestring-lazy
     test-framework-quickcheck2 >= 0.3  && < 0.4
 
   ghc-options: -Wall -Wno-orphans
-
-
-
 
 

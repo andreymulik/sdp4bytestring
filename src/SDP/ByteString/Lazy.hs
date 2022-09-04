@@ -1,10 +1,11 @@
-{-# LANGUAGE Trustworthy, MagicHash, CPP, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE Trustworthy, MagicHash, CPP #-}
 
 #if defined(__GLASGOW_HASKELL__) && !MIN_VERSION_bytestring(0,10,12)
-#define SDP_LINEAR_EXTRAS
+#define SDP_BYTESTRING_LINEAR_EXTRAS
 #endif
 
-#ifdef SDP_LINEAR_EXTRAS
+#ifdef SDP_BYTESTRING_LINEAR_EXTRAS
 {-# LANGUAGE TypeFamilies #-}
 #endif
 
@@ -47,13 +48,13 @@ import qualified SDP.ByteString as S
 import Data.Foldable as F ( foldrM )
 import Data.Maybe
 
-#ifdef SDP_LINEAR_EXTRAS
+#ifdef SDP_BYTESTRING_LINEAR_EXTRAS
 import qualified GHC.Exts as L
 #endif
 
-import Control.Exception.SDP
-
 import System.IO.Classes
+
+import Control.Exception.SDP
 
 default ()
 
@@ -64,9 +65,41 @@ type LByteString = ByteString
 
 --------------------------------------------------------------------------------
 
+{- Nullable, Forceable and Estimate instances. -}
+
+instance Nullable ByteString
+  where
+    isNull = B.null
+    lzero  = B.empty
+
+#if MIN_VERSION_sdp(0,3,0)
+instance Forceable ByteString
+  where
+    force = B.copy
+#endif
+
+instance Estimate ByteString
+  where
+    (<==>) = go 0
+      where
+        go o Empty Empty = o <=> 0
+        go o xs    Empty = xs <.=> (-o)
+        go o Empty    ys = o <=.> ys
+        go o (Chunk ch1 chs1) (Chunk ch2 chs2) =
+          go (o + sizeOf ch1 - sizeOf ch2) chs1 chs2
+    
+    Empty <.=> n = 0 <=> n
+    (Chunk ch chs) <.=> n = ch .> n ? GT $ chs <.=> (n - sizeOf ch)
+    
+#if MIN_VERSION_sdp(0,3,0)
+    sizeOf = fromEnum . B.length
+#endif
+
+--------------------------------------------------------------------------------
+
 {- IsList instance. -}
 
-#ifdef SDP_LINEAR_EXTRAS
+#ifdef SDP_BYTESTRING_LINEAR_EXTRAS
 instance L.IsList ByteString
   where
     type Item ByteString = Word8
@@ -82,23 +115,23 @@ instance L.IsList ByteString
 instance Bordered ByteString Int
   where
     lower      = const 0
-    sizeOf     = fromEnum . B.length
     upper   bs = sizeOf bs - 1
     bounds  bs = (0, sizeOf bs - 1)
     indices bs = [0 .. sizeOf bs - 1]
     indexIn bs = \ i -> i >= 0 && i < sizeOf bs
 #if MIN_VERSION_sdp(0,3,0)
     rebound    = take . size
+#else
+    sizeOf     = fromEnum . B.length
 #endif
 
 instance Linear ByteString Word8
   where
-    replicate   = B.replicate . toEnum
-    concat      = B.concat . toList
-    fromList    = B.pack
+    replicate = B.replicate . toEnum
+    concat    = B.concat . toList
+    fromList  = B.pack
     
-    intersperse = B.intersperse
-    filter      = B.filter
+    filter = B.filter
     
     listR  = \ bs -> let n = sizeOf bs in (bs .!) <$> [n - 1, n - 2 .. 0]
     single = B.singleton
@@ -121,8 +154,20 @@ instance Linear ByteString Word8
     last   = B.last
     init   = B.init
     
-    partitions is bs = map fromList . partitions is $ listL bs
+#if MIN_VERSION_sdp(0,3,0)
+    sfoldr = B.foldr
+    sfoldl = B.foldl
+#else
+    partitions is = map fromList . partitions is . listL
+    intersperse   = B.intersperse
+    
     isSubseqOf xs ys = B.all (`B.elem` ys) xs
+    
+    o_foldr = B.foldr
+    o_foldl = B.foldl
+    
+    force = B.copy
+#endif
     
     -- | O(n) nub, requires O(1) memory.
     nub bs = runST $ do
@@ -142,26 +187,22 @@ instance Linear ByteString Word8
     ofoldl f = \ base bs ->
       let go i = -1 == i ? base $ f i (go $ i - 1) (bs !^ i)
       in  go (upper bs)
-    
-    o_foldr = B.foldr
-    o_foldl = B.foldl
 #if !MIN_VERSION_sdp(0,3,0)
 instance Split ByteString Word8
   where
+    spanl  = B.span
+    breakl = B.break
 #endif
-    take  = B.take    . toEnum
-    drop  = B.drop    . toEnum
+    takeWhile = B.takeWhile
+    dropWhile = B.dropWhile
+    
+    take  = B.take . toEnum
+    drop  = B.drop . toEnum
     split = B.splitAt . toEnum
     
     isPrefixOf = B.isPrefixOf
     isSuffixOf = B.isSuffixOf
     isInfixOf  = on isInfixOf listL
-    
-    takeWhile = B.takeWhile
-    dropWhile = B.dropWhile
-    
-    spanl  = B.span
-    breakl = B.break
 
 --------------------------------------------------------------------------------
 
@@ -171,7 +212,10 @@ instance Map ByteString Int Word8
   where
     toMap = toMap' 0
     
-    toMap' defvalue ascs = null ascs ? Z $ assoc' (ascsBounds ascs) defvalue ascs
+    toMap' defvalue ascs = null ascs ? Z $ assoc' (l, u) defvalue ascs
+      where
+        l = fst $ minimumBy cmpfst ascs
+        u = fst $ maximumBy cmpfst ascs
     
     (.!) es = B.index es . toEnum
     
@@ -223,36 +267,13 @@ instance Freeze (ST s) (STUblist s Word8) ByteString
   where
     freeze = F.foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty . toChunks
 
-instance (MonadIO io) => Thaw io ByteString (MIOUblist io Word8)
+instance MonadIO io => Thaw io ByteString (MIOUblist io Word8)
   where
     thaw = fromChunksM <=< B.foldrChunks (liftA2 (:) . thaw) (return [])
 
-instance (MonadIO io) => Freeze io (MIOUblist io Word8) ByteString
+instance MonadIO io => Freeze io (MIOUblist io Word8) ByteString
   where
     freeze = F.foldrM (\ e rs -> (`Chunk` rs) <$> freeze e) Empty . toChunks
-
---------------------------------------------------------------------------------
-
-{- Nullable, Forceable and Estimate instances. -}
-
-instance Nullable ByteString where lzero = B.empty; isNull = B.null
-
-#if MIN_VERSION_sdp(0,3,0)
-instance Forceable ByteString where force = B.copy
-#endif
-
-instance Estimate ByteString
-  where
-    (<==>) = go 0
-      where
-        go o Empty Empty = o <=> 0
-        go o xs    Empty = xs <.=> (-o)
-        go o Empty    ys = o <=.> ys
-        go o (Chunk ch1 chs1) (Chunk ch2 chs2) =
-          go (o + sizeOf ch1 - sizeOf ch2) chs1 chs2
-    
-    Empty <.=> n = 0 <=> n
-    (Chunk ch chs) <.=> n = ch .> n ? GT $ chs <.=> (n - sizeOf ch)
 
 --------------------------------------------------------------------------------
 
@@ -271,9 +292,6 @@ instance IsTextFile ByteString
 
 --------------------------------------------------------------------------------
 
-ascsBounds :: (Ord a) => [(a, b)] -> (a, a)
-ascsBounds =  \ ((x, _) : xs) -> foldr (\ (e, _) (mn, mx) -> (min mn e, max mx e)) (x, x) xs
-
 done :: STUblist s Word8 -> ST s ByteString
 done =  freeze
 
@@ -282,4 +300,6 @@ pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
 
 lim :: Int
 lim =  1024
+
+
 

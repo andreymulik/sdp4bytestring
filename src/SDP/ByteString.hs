@@ -1,10 +1,11 @@
-{-# LANGUAGE Trustworthy, MagicHash, MultiParamTypeClasses, CPP, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE Trustworthy, MagicHash, CPP #-}
 
 #if defined(__GLASGOW_HASKELL__) && !MIN_VERSION_bytestring(0,10,12)
-#define SDP_LINEAR_EXTRAS
+#define SDP_BYTESTRING_LINEAR_EXTRAS
 #endif
 
-#ifdef SDP_LINEAR_EXTRAS
+#ifdef SDP_BYTESTRING_LINEAR_EXTRAS
 {-# LANGUAGE TypeFamilies #-}
 #endif
 
@@ -51,13 +52,13 @@ import Data.Maybe
 import Foreign.Storable ( Storable ( poke ) )
 import Foreign.Ptr      ( plusPtr )
 
-#ifdef SDP_LINEAR_EXTRAS
+#ifdef SDP_BYTESTRING_LINEAR_EXTRAS
 import qualified GHC.Exts as L
 #endif
 
-import Control.Exception.SDP
-
 import System.IO.Classes
+
+import Control.Exception.SDP
 
 default ()
 
@@ -75,17 +76,10 @@ instance Nullable ByteString
     lzero  = B.empty
     isNull = B.null
 
-#ifdef SDP_LINEAR_EXTRAS
-instance L.IsList ByteString
-  where
-    type Item ByteString = Word8
-    
-    toList   = B.unpack
-    fromList = B.pack
-#endif
-
 #if MIN_VERSION_sdp(0,3,0)
-instance Forceable ByteString where force = B.copy
+instance Forceable ByteString
+  where
+    force = B.copy
 #endif
 
 instance Estimate ByteString
@@ -101,22 +95,45 @@ instance Estimate ByteString
     (.<=)  = (<=)  . sizeOf
     (.>)   = (>)   . sizeOf
     (.<)   = (<)   . sizeOf
+    
+#if MIN_VERSION_sdp(0,3,0)
+    sizeOf = B.length
+#endif
 
 --------------------------------------------------------------------------------
 
-{- Bordered, Linear and Split instances. -}
+{- IsList instance. -}
+
+#ifdef SDP_BYTESTRING_LINEAR_EXTRAS
+instance L.IsList ByteString
+  where
+    type Item ByteString = Word8
+    
+    toList   = B.unpack
+    fromList = B.pack
+#endif
+
+--------------------------------------------------------------------------------
+
+{- Bordered instance. -}
 
 instance Bordered ByteString Int
   where
     lower      = const 0
-    sizeOf     = B.length
     upper   bs = sizeOf bs - 1
     bounds  bs = (0, sizeOf bs - 1)
     indices bs = [0 .. sizeOf bs - 1]
     indexIn bs = \ i -> i >= 0 && i < sizeOf bs
+    
 #if MIN_VERSION_sdp(0,3,0)
-    rebound    = B.take . size
+    rebound = B.take . size
+#else
+    sizeOf  = B.length
 #endif
+
+--------------------------------------------------------------------------------
+
+{- Linear and Split instances. -}
 
 instance Linear ByteString Word8
   where
@@ -134,10 +151,8 @@ instance Linear ByteString Word8
     uncons = fromMaybe (pfailEx "uncons") . B.uncons
     unsnoc = fromMaybe (pfailEx "unsnoc") . B.unsnoc
     
-    fromFoldable es = unsafeCreate (length es) fromFoldable'
-      where
-        fromFoldable' ptr = void $ foldr pokeNext (return ptr) es
-        pokeNext  e   mp  = do p <- mp; poke p e; return $ p `plusPtr` 1
+    fromFoldable es = unsafeCreate (length es) $ \ ptr -> void $ foldl
+      (\ mp e -> mp >>= \ p -> plusPtr p 1 <$ poke p e) (return ptr) es
     
     listR = \ bs -> let n = sizeOf bs in [ bs .! i | i <- [n - 1, n - 2 .. 0] ]
     listL = B.unpack
@@ -146,14 +161,26 @@ instance Linear ByteString Word8
     
     write bs = (bs //) . single ... (,)
     
-    concat      = B.concat . toList
-    intersperse = B.intersperse
-    replicate   = B.replicate
-    filter      = B.filter
-    fromList    = B.pack
+    concat    = B.concat . toList
+    replicate = B.replicate
+    filter    = B.filter
+    fromList  = B.pack
     
-    partitions is bs = map fromList . partitions is $ listL bs
-    isSubseqOf xs ys = B.all (`B.elem` ys) xs
+#if MIN_VERSION_sdp(0,3,0)
+    nubBy f = fromList . sfoldr (\ b es -> any (f b) es ? es $ b : es) [] . nub
+    
+    nub bs = runST $ do
+        hs <- filled 256 False
+        sfoldr (\ b io -> writeM' hs b True >> io) (return ()) bs
+        done' hs
+      where
+        done' :: STBytes s Word8 Bool -> ST s ByteString
+        done' =  fmap fromList . kfoldrM (\ i b is -> return $ b ? (i : is) $ is) []
+    
+    sfoldr = B.foldr
+    sfoldl = B.foldl
+#else
+    nubBy f = fromList . o_foldr (\ b es -> any (f b) es ? es $ b : es) [] . nub
     
     nub bs = runST $ do
         hs <- filled 256 False
@@ -163,7 +190,14 @@ instance Linear ByteString Word8
         done' :: STBytes s Word8 Bool -> ST s ByteString
         done' =  fmap fromList . kfoldrM (\ i b is -> return $ b ? (i : is) $ is) []
     
-    nubBy f = fromList . o_foldr (\ b es -> any (f b) es ? es $ b : es) [] . nub
+    partitions is bs = map fromList . partitions is $ listL bs
+    isSubseqOf xs ys = B.all (`B.elem` ys) xs
+    intersperse      = B.intersperse
+    
+    o_foldr = B.foldr
+    o_foldl = B.foldl
+    force   = B.copy
+#endif
     
     ofoldr f = \ base bs ->
       let n = sizeOf bs; go i = n == i ? base $ f i (bs !^ i) (go $ i + 1)
@@ -172,13 +206,18 @@ instance Linear ByteString Word8
     ofoldl f = \ base bs ->
       let go i = -1 == i ? base $ f i (go $ i - 1) (bs !^ i)
       in  go (upper bs)
-    
-    o_foldr = B.foldr
-    o_foldl = B.foldl
 #if !MIN_VERSION_sdp(0,3,0)
 instance Split ByteString Word8
   where
+    spanl  = B.span
+    spanr  = B.spanEnd
+    breakl = B.break
+    breakr = B.breakEnd
 #endif
+    
+    takeWhile = B.takeWhile
+    dropWhile = B.dropWhile
+    
     take  = B.take
     drop  = B.drop
     split = B.splitAt
@@ -186,14 +225,6 @@ instance Split ByteString Word8
     isPrefixOf = B.isPrefixOf
     isSuffixOf = B.isSuffixOf
     isInfixOf  = B.isInfixOf
-    takeWhile  = B.takeWhile
-    dropWhile  = B.dropWhile
-    
-    spanl = B.span
-    spanr = B.spanEnd
-    
-    breakl = B.break
-    breakr = B.breakEnd
 
 --------------------------------------------------------------------------------
 
@@ -285,6 +316,5 @@ done :: STBytes# s Word8 -> ST s ByteString
 done =  fmap fromList . getLeft
 
 pfailEx :: String -> a
-pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString.Lazy."
-
+pfailEx =  throw . PatternMatchFail . showString "in SDP.ByteString."
 
