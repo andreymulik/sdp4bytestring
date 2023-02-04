@@ -126,9 +126,9 @@ instance Bordered ByteString Int
     indexIn bs = \ i -> i >= 0 && i < sizeOf bs
     
 #if MIN_VERSION_sdp(0,3,0)
-    rebound = B.take . size
+    viewOf = B.take . size
 #else
-    sizeOf  = B.length
+    sizeOf = B.length
 #endif
 
 --------------------------------------------------------------------------------
